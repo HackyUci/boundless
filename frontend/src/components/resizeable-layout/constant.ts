@@ -1,7 +1,7 @@
 export const FEATURE_BUTTONS = [
   {
-    id: "country-details",
-    label: "Country Details",
+    id: "comparison-details",
+    label: "Comparison Details",
   },
   {
     id: "cv-analyzer",
@@ -9,5 +9,5 @@ export const FEATURE_BUTTONS = [
   }
 ] as const;
 
-export type FeatureButtonId = "country-details" | "cv-analyzer";
+export type FeatureButtonId = "comparison-details" | "cv-analyzer";
 
