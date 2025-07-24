@@ -1,3 +1,4 @@
+// Your navbar component file
 "use client"
 
 import * as React from "react"
@@ -5,21 +6,12 @@ import Link from "next/link"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-
-// You can create a simple hook to manage auth state for now.
-// In a real app, this would come from a Context, Zustand, or a library like NextAuth.js.
-const useAuth = () => {
-  const [isLoggedIn, setIsLoggedIn] = React.useState(false) // Default to logged out
-  // This function would be replaced by your actual login/logout logic
-  const toggleLogin = () => setIsLoggedIn(!isLoggedIn)
-  return { isLoggedIn, toggleLogin }
-}
+import { useAuth } from "@/lib/auth-context"
 
 export function Navbar({ className, ...props }: React.HTMLAttributes<HTMLElement>) {
-  const { isLoggedIn, toggleLogin } = useAuth()
+  const { isLoggedIn, isLoading, logout, user } = useAuth()
 
   const navLinks = [
-    { href: "/", label: "Home" },
     { href: "/discover", label: "Discover", loggedIn: true },
     { href: "/roadmap", label: "Preparation Roadmap", loggedIn: true },
     { href: "/scholarships", label: "Scholarships", loggedIn: true },
@@ -42,7 +34,7 @@ export function Navbar({ className, ...props }: React.HTMLAttributes<HTMLElement
               alt="Boundless Logo"
               width={150}
               height={40}
-              className="h-8 w-auto" // Using w-auto maintains the aspect ratio
+              className="h-8 w-auto"
             />
           </Link>
         </div>
@@ -67,20 +59,34 @@ export function Navbar({ className, ...props }: React.HTMLAttributes<HTMLElement
         {/* Right Section: Action Buttons */}
         <div className="flex w-1/3 justify-end">
           <div className="flex items-center gap-2 md:gap-4">
-            {isLoggedIn ? null : 
-            (
-              <Button asChild>
-                <Link href="/login">Get started</Link>
-              </Button>
-            )}
+            {/* Show loading state or actual buttons */}
+            {isLoading ? (
+              <div className="w-20 h-9 bg-gray-200 animate-pulse rounded"></div>
+            ) : (
+              <>
+                {!isLoggedIn && (
+                  <Button asChild>
+                    <Link href="/register">Get started</Link>
+                  </Button>
+                )}
 
-            {/* This is a temporary button to simulate login/logout */}
-            <Button onClick={toggleLogin} variant="destructive">
-              {isLoggedIn ? "Log Out" : "Log In (Dev)"}
-            </Button>
+                {isLoggedIn && (
+                  <>
+                    {/* Optional: Show user email */}
+                    {user?.email && (
+                      <span className="text-sm text-foreground/60 hidden md:inline">
+                        {user.email}
+                      </span>
+                    )}
+                    <Button onClick={logout} variant="destructive">
+                      Log Out
+                    </Button>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
-        
       </div>
     </header>
   )

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/ui/Navbar";
+import { AuthProvider } from "@/lib/auth-context";
 
 const fontSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -23,8 +24,10 @@ export default function RootLayout({
       <body
         className={`${fontSans.variable} font-sans antialiased`}
       >
-        <Navbar className="sticky top-0 z-50" />
-        {children}
+        <AuthProvider>
+          <Navbar className="sticky top-0 z-50" />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   createUserWithEmailAndPassword,
   updateProfile,
+  getIdToken,
 } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
@@ -13,6 +14,7 @@ import { useState } from "react";
 import { Eye, EyeOff, Star, Users, Mail, Lock, User } from "lucide-react";
 
 import { auth, db } from "@/lib/firebase";
+import { useAuth } from "@/lib/auth-context";
 import {
   Form,
   FormField,
@@ -40,6 +42,7 @@ type FormSchema = z.infer<typeof formSchema>;
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [firebaseError, setFirebaseError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -57,23 +60,34 @@ export default function RegisterPage() {
   const onSubmit = async (data: FormSchema) => {
     setFirebaseError(null);
     try {
+      // Create user account
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         data.email,
         data.password
       );
 
+      // Update user profile with display name
       await updateProfile(userCredential.user, {
         displayName: data.name,
       });
 
+      // Save user data to Firestore
       await setDoc(doc(db, "users", userCredential.user.uid), {
         name: data.name,
         email: data.email,
         favoriteUniversity: "",
       });
 
-      router.push("/");
+      // Get the ID token for the newly created user
+      const token = await getIdToken(userCredential.user);
+      
+      // Use the context login function to automatically log in the user
+      login(token);
+      
+      // Redirect to dashboard/discover page
+      router.push("/discover");
+      
     } catch (err: unknown) {
       console.error(err);
       if (typeof err === "object" && err !== null && "code" in err) {
@@ -81,8 +95,12 @@ export default function RegisterPage() {
 
         if (errorCode === "auth/email-already-in-use") {
           setFirebaseError("Email already in use");
+        } else if (errorCode === "auth/weak-password") {
+          setFirebaseError("Password is too weak");
+        } else if (errorCode === "auth/invalid-email") {
+          setFirebaseError("Invalid email address");
         } else {
-          setFirebaseError("Registration failed");
+          setFirebaseError("Registration failed. Please try again.");
         }
       } else {
         setFirebaseError("An unexpected error occurred");
@@ -335,7 +353,7 @@ export default function RegisterPage() {
                 className="w-full h-12 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors duration-200" 
                 disabled={form.formState.isSubmitting}
               >
-                {form.formState.isSubmitting ? 'Registering...' : 'Register'}
+                {form.formState.isSubmitting ? 'Creating Account...' : 'Register'}
               </Button>
 
               {/* Login Link */}

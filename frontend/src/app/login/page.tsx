@@ -9,7 +9,7 @@ import { useState } from "react";
 import { Eye, EyeOff, Star } from "lucide-react";
 
 import { auth } from "@/lib/firebase";
-import Cookies from "js-cookie";
+import { useAuth } from "@/lib/auth-context";
 import {
   Form,
   FormField,
@@ -30,6 +30,7 @@ type FormSchema = z.infer<typeof formSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [firebaseError, setFirebaseError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -46,8 +47,10 @@ export default function LoginPage() {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
       const token = await getIdToken(userCredential.user);
-      Cookies.set("authToken", token, { expires: 1 }); 
-      router.push("/");
+      
+      login(token);
+      
+      router.push("/discover");
     } catch (err: unknown) {
       console.error(err);
       setFirebaseError("Login failed");
