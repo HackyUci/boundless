@@ -6,11 +6,26 @@ import TileLayer from 'ol/layer/Tile';
 import VectorLayer from 'ol/layer/Vector';
 import TileJSON from 'ol/source/TileJSON';
 import VectorSource from 'ol/source/Vector';
-import GeoJSON from 'ol/format/GeoJSON';
+import Feature from 'ol/Feature';
+import Point from 'ol/geom/Point';
 import { fromLonLat } from 'ol/proj';
+import { Style, Circle, Fill, Stroke } from 'ol/style';
+import citiesData from '@/datasource/map-data/cities.json';
 
-const MapComponent: React.FC = () => {
+interface City {
+  city: string;
+  country: string;
+  lat: number;
+  lon: number;
+}
+
+interface MapComponentProps {
+  onCityClick?: (city: City) => void;
+}
+
+const MapComponent: React.FC<MapComponentProps> = ({ onCityClick }) => {
   const mapRef = useRef<HTMLDivElement | null>(null);
+  const mapInstance = useRef<Map | null>(null);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -22,25 +37,78 @@ const MapComponent: React.FC = () => {
       }),
     });
 
-    const pointsLayer = new VectorLayer({
+    const cityFeatures = (citiesData as City[]).map((city) => {
+      const feature = new Feature({
+        geometry: new Point(fromLonLat([city.lon, city.lat])),
+        city: city.city,
+        country: city.country,
+        lat: city.lat,
+        lon: city.lon,
+      });
+
+      feature.setStyle(
+        new Style({
+          image: new Circle({
+            radius: 6,
+            fill: new Fill({
+              color: '#3b82f6',
+            }),
+            stroke: new Stroke({
+              color: '#ffffff',
+              width: 2,
+            }),
+          }),
+        })
+      );
+
+      return feature;
+    });
+
+    const citiesLayer = new VectorLayer({
       source: new VectorSource({
-        url: 'https://api.maptiler.com/data/01983c5c-e9df-7fcb-89a4-f9bbefcbb7f1/features.json?key=AbQrHv2zZohwE3Hz3Dhn',
-        format: new GeoJSON(),
+        features: cityFeatures,
       }),
     });
 
     const map = new Map({
       target: mapRef.current,
-      layers: [baseLayer, pointsLayer],
+      layers: [baseLayer, citiesLayer],
       view: new View({
         center: fromLonLat([0, 0]),
         zoom: 2,
       }),
     });
 
-    // Cleanup on unmount
-    return () => map.setTarget(undefined);
-  }, []);
+    map.on('click', (event) => {
+      const feature = map.forEachFeatureAtPixel(event.pixel, (feature) => feature);
+      
+      if (feature && onCityClick) {
+        const cityData: City = {
+          city: feature.get('city'),
+          country: feature.get('country'),
+          lat: feature.get('lat'),
+          lon: feature.get('lon'),
+        };
+        onCityClick(cityData);
+      }
+    });
+
+    map.on('pointermove', (event) => {
+      const pixel = map.getEventPixel(event.originalEvent);
+      const hit = map.hasFeatureAtPixel(pixel);
+      const target = map.getTarget();
+      if (target && target instanceof HTMLElement) {
+        target.style.cursor = hit ? 'pointer' : '';
+      }
+    });
+
+    mapInstance.current = map;
+
+    return () => {
+      map.setTarget(undefined);
+      mapInstance.current = null;
+    };
+  }, [onCityClick]);
 
   return (
     <div
