@@ -24,13 +24,11 @@ export default function ResizableLayout() {
 
   const handleButtonClick = (buttonId: FeatureButtonId) => {
     setActiveFeature(buttonId);
-    console.log(`Button clicked: ${buttonId}`);
   };
 
   const handleCityClick = (city: City) => {
     setSelectedCity(city);
     setActiveFeature("comparison-details"); 
-    console.log("City selected:", city);
   };
 
   const renderFeatureContent = () => {

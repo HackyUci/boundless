@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { 
   ArrowLeft,
+  ArrowRight,
   Star,
   MapPin, 
   DollarSign, 
@@ -18,7 +19,6 @@ import {
   Award,
   AlertCircle,
   CheckCircle,
-  Calendar,
   Target,
   TrendingUp,
   Zap
@@ -26,698 +26,734 @@ import {
 import { useRouter } from 'next/navigation';
 import { collection, addDoc, deleteDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
-import { TimelineSection } from './TimelineSection';
-
-interface Program {
- jurusan: string;
- university: string;
- country: string;
- city: string;
- annual_cost_idr?: number;
- scholarship_amount_idr?: number;
- net_cost_idr?: number;
- fits_budget?: string;
- match_score?: number;
- reasoning?: string;
- world_ranking?: number;
- admission_requirements?: string;
-}
-
-interface Scholarship {
- name: string;
- coverage_idr: number;
- coverage_percentage: number;
- deadline: string;
- application_url: string;
- success_probability: string;
- requirements: string;
-}
-
-interface PrepStep {
- action: string;
- deadline: string;
- cost_idr: number;
- priority: string;
-}
-
-interface ImprovementArea {
- area: string;
- current_level: string;
- target_level: string;
- action_plan: string;
- timeline: string;
- estimated_cost_idr: number;
-}
-
-interface University {
- id: string;
- name: string;
- country: string;
- city: string;
- programs: Program[];
- totalCost: number;
- scholarshipAmount: number;
- netCost: number;
- withinBudget: boolean;
- matchScore: number;
- reasoning: string;
- ranking: number | null;
-}
-
-interface AnalysisData {
- recommended_programs?: Program[];
- scholarship_priorities?: Scholarship[];
- preparation_steps?: PrepStep[];
- improvement_areas?: ImprovementArea[];
- budget_breakdown?: any;
- climate_security?: any;
- religious_facilities?: any;
- academic_analysis?: string;
- skills_assessment?: string;
-}
+import { useAuth } from '@/lib/auth-context';
+import { CVAnalysisResult, UniversityOption } from '../interface';
 
 export const AnalyzeResultSection = () => {
- const [user] = useAuthState(auth);
- const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
- const [universities, setUniversities] = useState<University[]>([]);
- const [selectedUniversity, setSelectedUniversity] = useState<University | null>(null);
- const [activeTheme, setActiveTheme] = useState<string>('overview');
- const [favorites, setFavorites] = useState(new Set<string>());
- const [loading, setLoading] = useState(true);
- const [error, setError] = useState<string | null>(null);
- const router = useRouter();
+  const { user } = useAuth(); 
+  const [analysisData, setAnalysisData] = useState<CVAnalysisResult | null>(null);
+  const [universityOptions, setUniversityOptions] = useState<UniversityOption[]>([]);
+  const [selectedOption, setSelectedOption] = useState<UniversityOption | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [favorites, setFavorites] = useState(new Set<string>());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    const loadAnalysisData = () => {
-      try {
-        const storedData = localStorage.getItem('cvAnalysisResult');
-        if (storedData) {
-          const parsedData = JSON.parse(storedData);
-          if (parsedData.error) {
-            setError(parsedData.error);
-          } else {
-            setAnalysisData(parsedData);
-            const transformedUniversities = transformToUniversityView(parsedData);
-            setUniversities(transformedUniversities);
-            if (transformedUniversities.length > 0) {
-              setSelectedUniversity(transformedUniversities[0]);
-            }
-          }
-        } else {
-          setError("No analysis data found. Please upload your CV first.");
-        }
-      } catch {
-        setError("Failed to load analysis results.");
-      } finally {
+    loadAnalysisData();
+    if (user) {
+      loadUserFavorites();
+    }
+  }, [user]);
+
+  const loadAnalysisData = () => {
+    try {
+      const storedData = localStorage.getItem('cvAnalysisResult');
+      if (!storedData) {
+        setError("No analysis data found. Please upload your CV first.");
         setLoading(false);
+        return;
       }
-    };
 
-   loadAnalysisData();
-   if (user) {
-     loadUserFavorites();
-   }
- }, [user]);
+      const parsedData: CVAnalysisResult = JSON.parse(storedData);
+      
+      if ('error' in parsedData) {
+        setError((parsedData as any).error);
+        setLoading(false);
+        return;
+      }
 
- const loadUserFavorites = async () => {
-   try {
-     const favoritesRef = collection(db, 'favorites');
-     const q = query(favoritesRef, where('userId', '==', user?.uid));
-     const querySnapshot = await getDocs(q);
-     
-     const userFavorites = new Set<string>();
-     querySnapshot.forEach((doc) => {
-       userFavorites.add(doc.data().universityId);
-     });
-     
-     setFavorites(userFavorites);
-   } catch (error) {
-     console.error('Error loading favorites:', error);
-   }
- };
+      setAnalysisData(parsedData);
+      
+      const options = transformProgramsToOptions(parsedData);
+      setUniversityOptions(options);
+      
+      if (options.length > 0) {
+        setSelectedOption(options[0]);
+      }
 
- const transformToUniversityView = (aiResponse: AnalysisData): University[] => {
-   const universitiesMap: { [key: string]: University } = {};
-   
-   aiResponse.recommended_programs?.forEach((program: Program) => {
-     const key = `${program.university}-${program.country}`;
-     if (!universitiesMap[key]) {
-       universitiesMap[key] = {
-         id: key,
-         name: program.university,
-         country: program.country,
-         city: program.city,
-         programs: [],
-         totalCost: program.annual_cost_idr || 0,
-         scholarshipAmount: program.scholarship_amount_idr || 0,
-         netCost: program.net_cost_idr || 0,
-         withinBudget: program.fits_budget === 'yes',
-         matchScore: program.match_score || 0,
-         reasoning: program.reasoning || '',
-         ranking: program.world_ranking || null
-       };
-     }
-     universitiesMap[key].programs.push(program);
-   });
-   
-   return Object.values(universitiesMap);
- };
+    } catch (err) {
+      console.error('Error loading analysis data:', err);
+      setError("Failed to load analysis results.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
- const formatCurrency = (amount: number | undefined) => {
-   if (!amount) return 'Not specified';
-   return new Intl.NumberFormat('id-ID', {
-     style: 'currency',
-     currency: 'IDR',
-     minimumFractionDigits: 0,
-     maximumFractionDigits: 0,
-   }).format(amount);
- };
+  const loadUserFavorites = async () => {
+    if (!user) return;
+    
+    try {
+      const favoritesRef = collection(db, 'favorites');
+      const q = query(favoritesRef, where('userId', '==', user.user_id));
+      const querySnapshot = await getDocs(q);
+      
+      const userFavorites = new Set<string>();
+      querySnapshot.forEach((doc) => {
+        userFavorites.add(doc.data().universityId);
+      });
+      
+      setFavorites(userFavorites);
+    } catch (error) {
+      console.error('Error loading favorites:', error);
+    }
+  };
 
- const addToFavorites = async (university: University) => {
-   try {
-     await addDoc(collection(db, 'favorites'), {
-       userId: user?.uid,
-       universityId: university.id,
-       name: university.name,
-       country: university.country,
-       city: university.city,
-       programs: university.programs,
-       netCost: university.netCost,
-       matchScore: university.matchScore,
-       ranking: university.ranking,
-       createdAt: new Date()
-     });
-   } catch (error) {
-     console.error('Error adding to favorites:', error);
-     throw error;
-   }
- };
+  const transformProgramsToOptions = (data: CVAnalysisResult): UniversityOption[] => {
+    if (!data.recommended_programs) return [];
+    
+    return data.recommended_programs.map((program, index) => ({
+      id: `${program.university}-${program.country}-${index}`,
+      name: program.university,
+      country: program.country,
+      city: program.city,
+      program: program,
+      totalCost: program.annual_cost_idr || 0,
+      scholarshipAmount: program.scholarship_amount_idr || 0,
+      netCost: program.net_cost_idr || 0,
+      withinBudget: program.fits_budget === 'yes',
+      matchScore: program.match_score || 0,
+      reasoning: program.reasoning || '',
+      ranking: program.world_ranking || null
+    }));
+  };
 
- const removeFromFavorites = async (universityId: string) => {
-   try {
-     const favoritesRef = collection(db, 'favorites');
-     const q = query(
-       favoritesRef, 
-       where('userId', '==', user?.uid),
-       where('universityId', '==', universityId)
-     );
-     const querySnapshot = await getDocs(q);
-     
-     querySnapshot.forEach(async (doc) => {
-       await deleteDoc(doc.ref);
-     });
-   } catch (error) {
-     console.error('Error removing from favorites:', error);
-     throw error;
-   }
- };
+  const formatCurrency = (amount: number | undefined) => {
+    if (!amount) return 'Not specified';
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
 
- const toggleFavorite = async (universityId: string) => {
-   if (!user) {
-     alert('Please login to add favorites');
-     return;
-   }
+  const saveToFavorites = async (option: UniversityOption) => {
+    if (!user) {
+      alert('Please login to save favorites');
+      return;
+    }
 
-   const university = universities.find(u => u.id === universityId);
-   if (!university) return;
+    try {
+      await addDoc(collection(db, 'favorites'), {
+        userId: user.user_id,
+        universityId: option.id,
+        name: option.name,
+        country: option.country,
+        city: option.city,
+        jurusan: option.program.jurusan,
+        annual_cost_idr: option.program.annual_cost_idr,
+        scholarship_amount_idr: option.program.scholarship_amount_idr,
+        net_cost_idr: option.program.net_cost_idr,
+        fits_budget: option.program.fits_budget,
+        match_score: option.program.match_score,
+        reasoning: option.program.reasoning,
+        world_ranking: option.program.world_ranking,
+        admission_requirements: option.program.admission_requirements,
+        totalCost: option.totalCost,
+        scholarshipAmount: option.scholarshipAmount,
+        netCost: option.netCost,
+        withinBudget: option.withinBudget,
+        matchScore: option.matchScore,
+        ranking: option.ranking,
+        createdAt: new Date()
+      });
+      console.log('Successfully saved to favorites');
+    } catch (error) {
+      console.error('Error saving to favorites:', error);
+      throw error;
+    }
+  };
 
-   try {
-     const newFavorites = new Set(favorites);
-     
-     if (newFavorites.has(universityId)) {
-       await removeFromFavorites(universityId);
-       newFavorites.delete(universityId);
-     } else {
-       await addToFavorites(university);
-       newFavorites.add(universityId);
-     }
-     
-     setFavorites(newFavorites);
-   } catch (error) {
-     console.error('Error updating favorites:', error);
-     alert('Failed to update favorites. Please try again.');
-   }
- };
+  const removeFromFavorites = async (universityId: string) => {
+    if (!user) return;
 
- const getMatchColor = (score: number) => {
-   if (score >= 8) return 'bg-green-500';
-   if (score >= 6) return 'bg-yellow-500';
-   return 'bg-red-500';
- };
+    try {
+      const favoritesRef = collection(db, 'favorites');
+      const q = query(
+        favoritesRef, 
+        where('userId', '==', user.user_id), 
+        where('universityId', '==', universityId)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      querySnapshot.forEach(async (doc) => {
+        await deleteDoc(doc.ref);
+      });
+      console.log('Successfully removed from favorites');
+    } catch (error) {
+      console.error('Error removing from favorites:', error);
+      throw error;
+    }
+  };
 
- const OverviewContent = () => (
-   <div className="space-y-6">
-     <div className="grid md:grid-cols-3 gap-4">
-       <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-         <CardContent className="p-6">
-           <div className="flex items-center justify-between">
-             <div>
-               <p className="text-sm font-medium text-blue-600">Match Score</p>
-               <p className="text-2xl font-bold text-blue-900">{selectedUniversity?.matchScore}/10</p>
-             </div>
-             <div className={`w-3 h-3 rounded-full ${getMatchColor(selectedUniversity?.matchScore || 0)}`}></div>
-           </div>
-           <Progress value={(selectedUniversity?.matchScore || 0) * 10} className="mt-3" />
-         </CardContent>
-       </Card>
+  const toggleFavorite = async (universityId: string) => {
+    if (!user) {
+      alert('Please login to add favorites');
+      return;
+    }
 
-       <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-         <CardContent className="p-6">
-           <div className="flex items-center justify-between">
-             <div>
-               <p className="text-sm font-medium text-green-600">Budget Status</p>
-               <p className="text-lg font-bold text-green-900">
-                 {selectedUniversity?.withinBudget ? 'Affordable' : 'Scholarship Needed'}
-               </p>
-             </div>
-             <CheckCircle className={`w-6 h-6 ${selectedUniversity?.withinBudget ? 'text-green-500' : 'text-gray-400'}`} />
-           </div>
-         </CardContent>
-       </Card>
+    const option = universityOptions.find(u => u.id === universityId);
+    if (!option) return;
 
-       <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-         <CardContent className="p-6">
-           <div className="flex items-center justify-between">
-             <div>
-               <p className="text-sm font-medium text-purple-600">World Ranking</p>
-               <p className="text-2xl font-bold text-purple-900">
-                 #{selectedUniversity?.ranking || 'N/A'}
-               </p>
-             </div>
-             <TrendingUp className="w-6 h-6 text-purple-500" />
-           </div>
-         </CardContent>
-       </Card>
-     </div>
+    try {
+      const newFavorites = new Set(favorites);
+      
+      if (newFavorites.has(universityId)) {
+        await removeFromFavorites(universityId);
+        newFavorites.delete(universityId);
+      } else {
+        await saveToFavorites(option);
+        newFavorites.add(universityId);
+      }
+      
+      setFavorites(newFavorites);
+    } catch (error) {
+      console.error('Error updating favorites:', error);
+      alert('Failed to update favorites. Please try again.');
+    }
+  };
 
-     <Card>
-       <CardHeader>
-         <CardTitle className="flex items-center gap-2">
-           <BookOpen className="w-5 h-5" />
-           Available Programs
-         </CardTitle>
-       </CardHeader>
-       <CardContent>
-         <div className="grid gap-4">
-           {selectedUniversity?.programs.map((program, index) => (
-             <div key={index} className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-               <div className="flex justify-between items-start mb-2">
-                 <h4 className="font-semibold text-gray-900">{program.jurusan}</h4>
-                 <Badge variant="outline">{program.match_score}/10 match</Badge>
-               </div>
-               <p className="text-sm text-gray-600 mb-2">{program.reasoning}</p>
-               <div className="flex justify-between items-center text-sm">
-                 <span className="text-gray-500">Annual Cost</span>
-                 <span className="font-medium">{formatCurrency(program.annual_cost_idr)}</span>
-               </div>
-             </div>
-           ))}
-         </div>
-       </CardContent>
-     </Card>
-   </div>
- );
+  const getMatchColor = (score: number) => {
+    if (score >= 8) return 'bg-green-500';
+    if (score >= 6) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
 
- const BudgetContent = () => (
-   <div className="space-y-6">
-     <div className="grid md:grid-cols-2 gap-6">
-       <Card>
-         <CardHeader>
-           <CardTitle className="flex items-center gap-2">
-             <DollarSign className="w-5 h-5" />
-             Cost Breakdown
-           </CardTitle>
-         </CardHeader>
-         <CardContent className="space-y-4">
-           <div className="space-y-3">
-             <div className="flex justify-between items-center">
-               <span className="text-gray-600">Annual Tuition</span>
-               <span className="font-semibold">{formatCurrency(selectedUniversity?.totalCost)}</span>
-             </div>
-             <div className="flex justify-between items-center">
-               <span className="text-gray-600">Scholarship Available</span>
-               <span className="font-semibold text-green-600">-{formatCurrency(selectedUniversity?.scholarshipAmount)}</span>
-             </div>
-             <div className="border-t pt-3">
-               <div className="flex justify-between items-center">
-                 <span className="font-medium text-gray-900">Net Annual Cost</span>
-                 <span className="text-xl font-bold text-gray-900">{formatCurrency(selectedUniversity?.netCost)}</span>
-               </div>
-             </div>
-           </div>
-         </CardContent>
-       </Card>
+  const navigateToTimeline = () => {
+    router.push('/timeline');
+  };
 
-       <Card>
-         <CardHeader>
-           <CardTitle>Monthly Living Costs</CardTitle>
-         </CardHeader>
-         <CardContent>
-           {analysisData?.budget_breakdown && (
-             <div className="space-y-3">
-               <div className="flex justify-between items-center">
-                 <span className="text-gray-600">Accommodation</span>
-                 <span className="font-medium">{formatCurrency(analysisData.budget_breakdown.accommodation_per_month_idr)}</span>
-               </div>
-               <div className="flex justify-between items-center">
-                 <span className="text-gray-600">Food & Daily Needs</span>
-                 <span className="font-medium">{formatCurrency(analysisData.budget_breakdown.food_per_month_idr)}</span>
-               </div>
-               <div className="flex justify-between items-center">
-                 <span className="text-gray-600">Transportation</span>
-                 <span className="font-medium">{formatCurrency(analysisData.budget_breakdown.transportation_per_month_idr)}</span>
-               </div>
-               <div className="border-t pt-3">
-                 <div className="flex justify-between items-center">
-                   <span className="font-medium text-gray-900">Total Monthly</span>
-                   <span className="text-xl font-bold text-gray-900">{formatCurrency(analysisData.budget_breakdown.total_monthly_idr)}</span>
-                 </div>
-               </div>
-             </div>
-           )}
-         </CardContent>
-       </Card>
-     </div>
-   </div>
- );
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-sm text-muted-foreground">Loading your university matches...</p>
+        </div>
+      </div>
+    );
+  }
 
- const ScholarshipContent = () => (
-   <div className="space-y-6">
-     <div className="grid gap-4">
-       {analysisData?.scholarship_priorities?.map((scholarship, index) => (
-         <Card key={index} className="hover:shadow-lg transition-shadow">
-           <CardContent className="p-6">
-             <div className="flex justify-between items-start mb-4">
-               <div>
-                 <h4 className="font-semibold text-lg text-gray-900">{scholarship.name}</h4>
-                 <p className="text-gray-600 text-sm mt-1">Coverage: {scholarship.coverage_percentage}%</p>
-               </div>
-               <Badge className={`${
-                 scholarship.success_probability === 'high' ? 'bg-green-100 text-green-800' :
-                 scholarship.success_probability === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                 'bg-red-100 text-red-800'
-               }`}>
-                 {scholarship.success_probability} chance
-               </Badge>
-             </div>
-             
-             <div className="grid md:grid-cols-2 gap-4 mb-4">
-               <div>
-                 <p className="text-sm font-medium text-gray-600">Amount</p>
-                 <p className="text-2xl font-bold text-green-600">{formatCurrency(scholarship.coverage_idr)}</p>
-               </div>
-               <div>
-                 <p className="text-sm font-medium text-gray-600">Deadline</p>
-                 <p className="text-lg font-semibold text-red-600">{scholarship.deadline}</p>
-               </div>
-             </div>
-             
-             <div className="space-y-2">
-               <p className="text-sm font-medium text-gray-600">Requirements</p>
-               <p className="text-sm text-gray-700">{scholarship.requirements}</p>
-             </div>
-             
-             <Button className="w-full mt-4" onClick={() => window.open(scholarship.application_url, '_blank')}>
-               Apply Now
-             </Button>
-           </CardContent>
-         </Card>
-       ))}
-     </div>
-   </div>
- );
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertCircle className="w-4 h-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
- const TimelineContent = () => (
-   <TimelineSection />
- );
+  if (!selectedOption || universityOptions.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Alert className="max-w-md">
+          <AlertCircle className="w-4 h-4" />
+          <AlertDescription>No university recommendations found in your CV analysis.</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
- const ImprovementContent = () => (
-   <div className="space-y-6">
-     <div className="grid gap-4">
-       {analysisData?.improvement_areas?.map((area, index) => (
-         <Card key={index} className="hover:shadow-lg transition-shadow">
-           <CardContent className="p-6">
-             <div className="flex items-start justify-between mb-4">
-               <div>
-                 <h4 className="font-semibold text-lg text-gray-900">{area.area}</h4>
-                 <p className="text-gray-600 text-sm mt-1">{area.timeline}</p>
-               </div>
-               <Badge variant="outline">{formatCurrency(area.estimated_cost_idr)}</Badge>
-             </div>
-             
-             <div className="space-y-3">
-               <div>
-                 <p className="text-sm font-medium text-gray-600">Current Level</p>
-                 <p className="text-sm text-gray-700">{area.current_level}</p>
-               </div>
-               <div>
-                 <p className="text-sm font-medium text-gray-600">Target Level</p>
-                 <p className="text-sm text-gray-700">{area.target_level}</p>
-               </div>
-               <div>
-                 <p className="text-sm font-medium text-gray-600">Action Plan</p>
-                 <p className="text-sm text-gray-700">{area.action_plan}</p>
-               </div>
-             </div>
-           </CardContent>
-         </Card>
-       ))}
-     </div>
-   </div>
- );
+  return (
+    <div className="min-h-screen">
+      <div className="flex">
+        <div className="w-80 border-r min-h-screen">
+          <div className="p-6 border-b">
+            <Button 
+              variant="ghost" 
+              onClick={() => router.back()}
+              className="mb-4 -ml-2"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+            <h2 className="text-xl font-bold">Your Matches</h2>
+            <p className="text-sm text-muted-foreground mt-1">{universityOptions.length} programs found</p>
+          </div>
+          
+          <div className="p-4 space-y-3">
+            {universityOptions.map((option) => (
+              <Card
+                key={option.id}
+                className={`cursor-pointer transition-all hover:shadow-md ${
+                  selectedOption?.id === option.id
+                    ? 'ring-2 ring-primary shadow-md'
+                    : 'hover:border-gray-300'
+                }`}
+                onClick={() => setSelectedOption(option)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-semibold text-sm">{option.name}</h3>
+                    <div className="flex items-center gap-1">
+                      <div className={`w-2 h-2 rounded-full ${getMatchColor(option.matchScore)}`}></div>
+                      <span className="text-xs text-muted-foreground">{option.matchScore}/10</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+                    <MapPin className="w-3 h-3" />
+                    {option.city}, {option.country}
+                  </p>
+                  <p className="text-xs text-blue-600 mb-2">{option.program.jurusan}</p>
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs font-medium">
+                      {formatCurrency(option.netCost)}/year
+                    </p>
+                    {option.ranking && (
+                      <span className="text-xs text-primary">#{option.ranking}</span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
 
- const LifestyleContent = () => (
-   <div className="space-y-6">
-     <div className="grid md:grid-cols-2 gap-6">
-       <Card>
-         <CardHeader>
-           <CardTitle className="flex items-center gap-2">
-             <Cloud className="w-5 h-5" />
-             Climate & Environment
-           </CardTitle>
-         </CardHeader>
-         <CardContent>
-           {analysisData?.climate_security && (
-             <div className="space-y-4">
-               <div>
-                 <p className="text-sm font-medium text-gray-600">Climate</p>
-                 <p className="text-gray-700">{analysisData.climate_security.climate}</p>
-               </div>
-               <div>
-                 <p className="text-sm font-medium text-gray-600">Safety Score</p>
-                 <div className="flex items-center gap-2">
-                   <Shield className="w-4 h-4 text-green-600" />
-                   <span className="text-lg font-semibold">{analysisData.climate_security.safety_score}/10</span>
-                 </div>
-               </div>
-               <div>
-                 <p className="text-sm font-medium text-gray-600">Clothing Budget</p>
-                 <p className="text-lg font-semibold">{formatCurrency(analysisData.climate_security.clothing_budget_idr)}</p>
-               </div>
-             </div>
-           )}
-         </CardContent>
-       </Card>
+        <div className="flex-1">
+          <div className="p-8">
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                <h1 className="text-3xl font-bold">{selectedOption.name}</h1>
+                <p className="text-lg text-muted-foreground flex items-center gap-2 mt-1">
+                  <MapPin className="w-5 h-5" />
+                  {selectedOption.city}, {selectedOption.country}
+                </p>
+                <p className="text-blue-600 font-medium mt-1">{selectedOption.program.jurusan}</p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => toggleFavorite(selectedOption.id)}
+                className="flex items-center gap-2"
+                disabled={!user}
+              >
+                <Star 
+                  className={`w-4 h-4 ${
+                    favorites.has(selectedOption.id) 
+                      ? 'fill-yellow-400 text-yellow-400' 
+                      : 'text-muted-foreground'
+                  }`} 
+                />
+                {favorites.has(selectedOption.id) ? 'Favorited' : 'Add to Favorites'}
+              </Button>
+            </div>
 
-       <Card>
-         <CardHeader>
-           <CardTitle className="flex items-center gap-2">
-             <Users className="w-5 h-5" />
-             Religious Facilities
-           </CardTitle>
-         </CardHeader>
-         <CardContent>
-           {analysisData?.religious_facilities?.islam && (
-             <div className="space-y-3">
-               <div>
-                 <p className="text-sm font-medium text-gray-600">Islamic Facilities</p>
-                 <p className="text-sm text-gray-700">{analysisData.religious_facilities.islam.availability}</p>
-               </div>
-               <div>
-                 <p className="text-sm font-medium text-gray-600">Halal Food</p>
-                 <p className="text-sm text-gray-700">{analysisData.religious_facilities.islam.halal_food}</p>
-               </div>
-               <div>
-                 <p className="text-sm font-medium text-gray-600">Prayer Facilities</p>
-                 <p className="text-sm text-gray-700">{analysisData.religious_facilities.islam.prayer_rooms}</p>
-               </div>
-             </div>
-           )}
-         </CardContent>
-       </Card>
-     </div>
-   </div>
- );
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+              <TabsList className="grid w-full grid-cols-5 h-12">
+                <TabsTrigger value="overview" className="flex items-center gap-2">
+                  <Target className="w-4 h-4" />
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger value="budget" className="flex items-center gap-2">
+                  <DollarSign className="w-4 h-4" />
+                  Budget
+                </TabsTrigger>
+                <TabsTrigger value="scholarships" className="flex items-center gap-2">
+                  <Award className="w-4 h-4" />
+                  Scholarships
+                </TabsTrigger>
+                <TabsTrigger value="improvement" className="flex items-center gap-2">
+                  <Zap className="w-4 h-4" />
+                  Improvement
+                </TabsTrigger>
+                <TabsTrigger value="lifestyle" className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Lifestyle
+                </TabsTrigger>
+              </TabsList>
 
- if (loading) {
-   return (
-     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-       <div className="text-center">
-         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-         <p className="text-gray-600">Loading your university matches...</p>
-       </div>
-     </div>
-   );
- }
+              <TabsContent value="overview" className="space-y-6">
+                <div className="grid md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Match Score</p>
+                          <p className="text-2xl font-bold">{selectedOption.matchScore}/10</p>
+                        </div>
+                        <div className={`w-3 h-3 rounded-full ${getMatchColor(selectedOption.matchScore)}`}></div>
+                      </div>
+                      <Progress value={selectedOption.matchScore * 10} className="mt-3" />
+                    </CardContent>
+                  </Card>
 
- if (error) {
-   return (
-     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-       <Alert variant="destructive" className="max-w-md">
-         <AlertCircle className="w-4 h-4" />
-         <AlertDescription>{error}</AlertDescription>
-       </Alert>
-     </div>
-   );
- }
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Budget Status</p>
+                          <p className="text-lg font-bold">
+                            {selectedOption.withinBudget ? 'Affordable' : 'Scholarship Needed'}
+                          </p>
+                        </div>
+                        <CheckCircle className={`w-6 h-6 ${selectedOption.withinBudget ? 'text-green-500' : 'text-muted-foreground'}`} />
+                      </div>
+                    </CardContent>
+                  </Card>
 
- if (!selectedUniversity) {
-   return (
-     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-       <Alert className="max-w-md">
-         <AlertCircle className="w-4 h-4" />
-         <AlertDescription>No university recommendations available.</AlertDescription>
-       </Alert>
-     </div>
-   );
- }
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">World Ranking</p>
+                          <p className="text-2xl font-bold">
+                            #{selectedOption.ranking || 'N/A'}
+                          </p>
+                        </div>
+                        <TrendingUp className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
 
- return (
-   <div className="min-h-screen bg-gray-50">
-     <div className="flex">
-       <div className="w-80 bg-white border-r border-gray-200 min-h-screen">
-         <div className="p-6 border-b border-gray-200">
-           <Button 
-             variant="ghost" 
-             onClick={() => router.back()}
-             className="mb-4 -ml-2 hover:bg-gray-100"
-           >
-             <ArrowLeft className="w-4 h-4 mr-2" />
-             Back
-           </Button>
-           <h2 className="text-xl font-bold text-gray-900">Your Matches</h2>
-           <p className="text-gray-600 text-sm mt-1">{universities.length} universities found</p>
-         </div>
-         
-         <div className="p-4 space-y-3">
-           {universities.map((university) => (
-             <div
-               key={university.id}
-               className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
-                 selectedUniversity?.id === university.id
-                   ? 'border-blue-500 bg-blue-50 shadow-md'
-                   : 'border-gray-200 hover:border-gray-300 bg-white'
-               }`}
-               onClick={() => setSelectedUniversity(university)}
-             >
-               <div className="flex justify-between items-start mb-2">
-                 <h3 className="font-semibold text-gray-900 text-sm">{university.name}</h3>
-                 <div className="flex items-center gap-1">
-                   <div className={`w-2 h-2 rounded-full ${getMatchColor(university.matchScore)}`}></div>
-                   <span className="text-xs text-gray-600">{university.matchScore}/10</span>
-                 </div>
-               </div>
-               <p className="text-xs text-gray-600 flex items-center gap-1 mb-2">
-                 <MapPin className="w-3 h-3" />
-                 {university.city}, {university.country}
-               </p>
-               <div className="flex justify-between items-center">
-                 <p className="text-xs font-medium text-gray-700">
-                   {formatCurrency(university.netCost)}/year
-                 </p>
-                 {university.ranking && (
-                   <span className="text-xs text-blue-600">#{university.ranking}</span>
-                 )}
-               </div>
-             </div>
-           ))}
-         </div>
-       </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BookOpen className="w-5 h-5" />
+                      Program Analysis
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="font-semibold text-lg">{selectedOption.program.jurusan}</h4>
+                        <p className="text-muted-foreground mt-1">{selectedOption.reasoning}</p>
+                      </div>
+                      
+                      {analysisData?.academic_analysis && (
+                        <div className="border-t pt-4">
+                          <h5 className="font-medium text-sm text-muted-foreground mb-2">Academic Analysis</h5>
+                          <p className="text-sm">{analysisData.academic_analysis}</p>
+                        </div>
+                      )}
 
-       <div className="flex-1">
-         <div className="p-8">
-           <div className="flex justify-between items-start mb-8">
-             <div>
-               <h1 className="text-3xl font-bold text-gray-900">{selectedUniversity.name}</h1>
-               <p className="text-lg text-gray-600 flex items-center gap-2 mt-2">
-                 <MapPin className="w-5 h-5" />
-                 {selectedUniversity.city}, {selectedUniversity.country}
-               </p>
-             </div>
-             <Button
-               variant="outline"
-               onClick={() => toggleFavorite(selectedUniversity.id)}
-               className="flex items-center gap-2 hover:bg-gray-50"
-               disabled={!user}
-             >
-               <Star 
-                 className={`w-4 h-4 ${
-                   favorites.has(selectedUniversity.id) 
-                     ? 'fill-yellow-400 text-yellow-400' 
-                     : 'text-gray-400'
-                 }`} 
-               />
-               Favorite
-             </Button>
-           </div>
+                      {analysisData?.skills_assessment && (
+                        <div className="border-t pt-4">
+                          <h5 className="font-medium text-sm text-muted-foreground mb-2">Skills Assessment</h5>
+                          <p className="text-sm">{analysisData.skills_assessment}</p>
+                        </div>
+                      )}
+                      
+                      <div className="grid md:grid-cols-2 gap-4 pt-4 border-t">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Annual Cost</p>
+                          <p className="text-lg font-semibold">{formatCurrency(selectedOption.totalCost)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Match Score</p>
+                          <p className="text-lg font-semibold">{selectedOption.program.match_score}/10</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-           <Tabs value={activeTheme} onValueChange={setActiveTheme} className="space-y-6">
-             <TabsList className="grid w-full grid-cols-6 h-12">
-               <TabsTrigger value="overview" className="flex items-center gap-2">
-                 <Target className="w-4 h-4" />
-                 Overview
-               </TabsTrigger>
-               <TabsTrigger value="budget" className="flex items-center gap-2">
-                 <DollarSign className="w-4 h-4" />
-                 Budget
-               </TabsTrigger>
-               <TabsTrigger value="scholarships" className="flex items-center gap-2">
-                 <Award className="w-4 h-4" />
-                 Scholarships
-               </TabsTrigger>
-               <TabsTrigger value="timeline" className="flex items-center gap-2">
-                 <Calendar className="w-4 h-4" />
-                 Timeline
-               </TabsTrigger>
-               <TabsTrigger value="improvement" className="flex items-center gap-2">
-                 <Zap className="w-4 h-4" />
-                 Improvement
-               </TabsTrigger>
-               <TabsTrigger value="lifestyle" className="flex items-center gap-2">
-                 <Users className="w-4 h-4" />
-                 Lifestyle
-               </TabsTrigger>
-             </TabsList>
+              <TabsContent value="budget" className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <DollarSign className="w-5 h-5" />
+                        Cost Breakdown
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Annual Tuition</span>
+                          <span className="font-semibold">{formatCurrency(selectedOption.totalCost)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Scholarship Available</span>
+                          <span className="font-semibold text-green-600">-{formatCurrency(selectedOption.scholarshipAmount)}</span>
+                        </div>
+                        <div className="border-t pt-3">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Net Annual Cost</span>
+                            <span className="text-xl font-bold">{formatCurrency(selectedOption.netCost)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-             <TabsContent value="overview" className="space-y-6">
-               <OverviewContent />
-             </TabsContent>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Budget Analysis</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {analysisData?.budget_breakdown && (
+                        <div className="space-y-3">
+                          {analysisData.budget_breakdown.average_tuition_idr && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">Average Tuition</span>
+                              <span className="font-medium">{formatCurrency(analysisData.budget_breakdown.average_tuition_idr)}</span>
+                            </div>
+                          )}
+                          {analysisData.budget_breakdown.average_living_monthly_idr && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">Monthly Living</span>
+                              <span className="font-medium">{formatCurrency(analysisData.budget_breakdown.average_living_monthly_idr)}</span>
+                            </div>
+                          )}
+                          {analysisData.budget_breakdown.total_annual_cost_idr && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">Total Annual</span>
+                              <span className="font-medium">{formatCurrency(analysisData.budget_breakdown.total_annual_cost_idr)}</span>
+                            </div>
+                          )}
+                          {analysisData.budget_breakdown.minimum_self_funding_idr && (
+                            <div className="border-t pt-3">
+                              <div className="flex justify-between items-center">
+                                <span className="font-medium">Minimum Self Funding</span>
+                                <span className="text-xl font-bold">{formatCurrency(analysisData.budget_breakdown.minimum_self_funding_idr)}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
 
-             <TabsContent value="budget" className="space-y-6">
-               <BudgetContent />
-             </TabsContent>
+              <TabsContent value="scholarships" className="space-y-6">
+                <div className="grid gap-4">
+                  {analysisData?.scholarship_priorities?.map((scholarship, index) => (
+                    <Card key={index} className="hover:shadow-lg transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h4 className="font-semibold text-lg">{scholarship.name}</h4>
+                            <p className="text-muted-foreground text-sm mt-1">Coverage: {scholarship.coverage_percentage}%</p>
+                          </div>
+                          <Badge variant={
+                            scholarship.success_probability === 'high' ? 'default' :
+                            scholarship.success_probability === 'medium' ? 'secondary' : 'outline'
+                          }>
+                            {scholarship.success_probability} chance
+                          </Badge>
+                        </div>
+                        
+                        <div className="grid md:grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Amount</p>
+                            <p className="text-2xl font-bold text-green-600">{formatCurrency(scholarship.coverage_idr)}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Deadline</p>
+                            <p className="text-lg font-semibold text-destructive">{scholarship.deadline}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-muted-foreground">Requirements</p>
+                          <p className="text-sm">{scholarship.requirements}</p>
+                          {scholarship.documents_needed && (
+                            <>
+                              <p className="text-sm font-medium text-muted-foreground mt-2">Documents Needed</p>
+                              <p className="text-sm">{scholarship.documents_needed}</p>
+                            </>
+                          )}
+                        </div>
+                        
+                        <Button className="w-full mt-4" onClick={() => window.open(scholarship.application_url, '_blank')}>
+                          Apply Now
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )) || (
+                    <Card>
+                      <CardContent className="p-6 text-center">
+                        <p className="text-muted-foreground">No scholarship information available</p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </TabsContent>
 
-             <TabsContent value="scholarships" className="space-y-6">
-               <ScholarshipContent />
-             </TabsContent>
+              <TabsContent value="improvement" className="space-y-6">
+                <div className="grid gap-4">
+                  {analysisData?.improvement_areas?.map((area, index) => (
+                    <Card key={index}>
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <h4 className="font-semibold text-lg">{area.area}</h4>
+                            <p className="text-muted-foreground text-sm mt-1">{area.timeline}</p>
+                          </div>
+                          <Badge variant="outline">{formatCurrency(area.estimated_cost_idr)}</Badge>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Current Level</p>
+                            <p className="text-sm">{area.current_level}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Target Level</p>
+                            <p className="text-sm">{area.target_level}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Action Plan</p>
+                            <p className="text-sm">{area.action_plan}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )) || (
+                    <Card>
+                      <CardContent className="p-6 text-center">
+                        <p className="text-muted-foreground">No improvement recommendations available</p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </TabsContent>
 
-             <TabsContent value="timeline" className="space-y-6">
-               <TimelineContent />
-             </TabsContent>
+              <TabsContent value="lifestyle" className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Cloud className="w-5 h-5" />
+                        Climate & Environment
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {analysisData?.climate_security ? (
+                        <div className="space-y-4">
+                          {analysisData.climate_security.climate_type && (
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Climate</p>
+                              <p className="text-sm">{analysisData.climate_security.climate_type}</p>
+                            </div>
+                          )}
+                          {analysisData.climate_security.temperature_range && (
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Temperature Range</p>
+                              <p className="text-sm">{analysisData.climate_security.temperature_range}</p>
+                            </div>
+                          )}
+                          {analysisData.climate_security.safety_score && (
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Safety Score</p>
+                              <div className="flex items-center gap-2">
+                                <Shield className="w-4 h-4 text-green-600" />
+                                <span className="text-lg font-semibold">{analysisData.climate_security.safety_score}/10</span>
+                              </div>
+                            </div>
+                          )}
+                          {analysisData.climate_security.clothing_budget_idr && (
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Clothing Budget</p>
+                              <p className="text-lg font-semibold">{formatCurrency(analysisData.climate_security.clothing_budget_idr)}</p>
+                            </div>
+                          )}
+                          {analysisData.climate_security.adaptation_tips && (
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Adaptation Tips</p>
+                              <p className="text-sm">{analysisData.climate_security.adaptation_tips}</p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground">No climate information available</p>
+                      )}
+                    </CardContent>
+                  </Card>
 
-             <TabsContent value="improvement" className="space-y-6">
-               <ImprovementContent />
-             </TabsContent>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="w-5 h-5" />
+                        Religious Facilities
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {analysisData?.religious_facilities ? (
+                        <div className="space-y-4">
+                          {analysisData.religious_facilities.islam && (
+                            <div className="space-y-3">
+                              <h6 className="font-medium">Islamic Facilities</h6>
+                              {analysisData.religious_facilities.islam.availability && (
+                                <div>
+                                  <p className="text-sm font-medium text-muted-foreground">Availability</p>
+                                  <p className="text-sm">{analysisData.religious_facilities.islam.availability}</p>
+                                </div>
+                              )}
+                              {analysisData.religious_facilities.islam.halal_food && (
+                                <div>
+                                  <p className="text-sm font-medium text-muted-foreground">Halal Food</p>
+                                  <p className="text-sm">{analysisData.religious_facilities.islam.halal_food}</p>
+                                </div>
+                              )}
+                              {analysisData.religious_facilities.islam.prayer_rooms && (
+                                <div>
+                                  <p className="text-sm font-medium text-muted-foreground">Prayer Facilities</p>
+                                  <p className="text-sm">{analysisData.religious_facilities.islam.prayer_rooms}</p>
+                                </div>
+                              )}
+                              {analysisData.religious_facilities.islam.community && (
+                                <div>
+                                  <p className="text-sm font-medium text-muted-foreground">Community</p>
+                                  <p className="text-sm">{analysisData.religious_facilities.islam.community}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          {analysisData.religious_facilities.christian && (
+                            <div className="space-y-3 border-t pt-4">
+                              <h6 className="font-medium">Christian Facilities</h6>
+                              {analysisData.religious_facilities.christian.availability && (
+                                <div>
+                                  <p className="text-sm font-medium text-muted-foreground">Availability</p>
+                                  <p className="text-sm">{analysisData.religious_facilities.christian.availability}</p>
+                                </div>
+                              )}
+                              {analysisData.religious_facilities.christian.church_distance && (
+                                <div>
+                                  <p className="text-sm font-medium text-muted-foreground">Church Distance</p>
+                                  <p className="text-sm">{analysisData.religious_facilities.christian.church_distance}</p>
+                                </div>
+                              )}
+                              {analysisData.religious_facilities.christian.denominations && (
+                                <div>
+                                  <p className="text-sm font-medium text-muted-foreground">Denominations</p>
+                                  <p className="text-sm">{analysisData.religious_facilities.christian.denominations}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground">No religious facility information available</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      </div>
 
-             <TabsContent value="lifestyle" className="space-y-6">
-               <LifestyleContent />
-             </TabsContent>
-           </Tabs>
-         </div>
-       </div>
-     </div>
-   </div>
- );
+      {favorites.size > 0 && user && (
+        <div className="fixed bottom-6 right-6">
+          <Button 
+            onClick={navigateToTimeline}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 text-lg"
+          >
+             Next
+            <ArrowRight className="w-5 h-5" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
 };

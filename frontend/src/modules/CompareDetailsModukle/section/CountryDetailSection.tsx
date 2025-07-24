@@ -77,8 +77,12 @@ function CountryComboBox({
                   value={country}
                   disabled={disabledCountries?.includes(country)}
                   onSelect={(currentValue) => {
-                    setValue(currentValue);
-                    setOpen(false);
+                    try {
+                      setValue(currentValue);
+                      setOpen(false);
+                    } catch (error) {
+                      console.error("Error in onSelect:", error);
+                    }
                   }}
                 >
                   <CheckIcon
@@ -102,7 +106,8 @@ export const CompareDetailSection: React.FC<CompareDetailSectionProps> = ({
   selectedCity,
 }) => {
   const [originCountry, setOriginCountry] = React.useState<string>("");
-  const [destinationCountry, setDestinationCountry] = React.useState<string>("");
+  const [destinationCountry, setDestinationCountry] =
+    React.useState<string>("");
   const [clickCount, setClickCount] = React.useState(0);
 
   const joinedData = React.useMemo(() => joinCityData(), []);
@@ -123,7 +128,8 @@ export const CompareDetailSection: React.FC<CompareDetailSectionProps> = ({
     );
     if (!originData?.col_index || !destData?.col_index) return null;
     const costDiff =
-      ((destData.col_index - originData.col_index) / originData.col_index) * 100;
+      ((destData.col_index - originData.col_index) / originData.col_index) *
+      100;
     const rentDiff =
       originData.rent_index && destData.rent_index
         ? ((destData.rent_index - originData.rent_index) /
