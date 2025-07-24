@@ -2,394 +2,752 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, Target, CheckCircle, AlertCircle, Star, MapPin } from 'lucide-react';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
+import { 
+  Calendar, 
+  Clock, 
+  Target, 
+  CheckCircle, 
+  AlertCircle, 
+  Star, 
+  MapPin, 
+  ArrowLeft,
+  BookOpen,
+  FileText,
+  Award,
+  Plane,
+  DollarSign,
+  Users,
+  Circle,
+  CheckCircle2
+} from 'lucide-react';
+import { collection, query, where, getDocs, orderBy, doc, updateDoc, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
 
 interface FavoriteUniversity {
- id: string;
- name: string;
- country: string;
- city: string;
- programs: Program[];
- applicationDeadline?: string;
- netCost: number;
- matchScore: number;
- ranking?: number;
- createdAt: any;
+  id: string;
+  name: string;
+  country: string;
+  city: string;
+  programs: Program[];
+  netCost: number;
+  matchScore: number;
+  ranking?: number;
+  createdAt: any;
 }
 
 interface Program {
- jurusan: string;
- university: string;
- country: string;
- city: string;
- annual_cost_idr?: number;
- scholarship_amount_idr?: number;
- net_cost_idr?: number;
- fits_budget?: string;
- match_score?: number;
- reasoning?: string;
- world_ranking?: number;
- admission_requirements?: string;
+  jurusan: string;
+  university: string;
+  country: string;
+  city: string;
+  annual_cost_idr?: number;
+  scholarship_amount_idr?: number;
+  net_cost_idr?: number;
+  fits_budget?: string;
+  match_score?: number;
+  reasoning?: string;
+  world_ranking?: number;
+  admission_requirements?: string;
 }
 
 interface TimelineStep {
- id: string;
- title: string;
- description: string;
- deadline: string;
- universityName: string;
- priority: 'high' | 'medium' | 'low';
- completed: boolean;
- type: 'application' | 'test' | 'document' | 'scholarship' | 'visa';
- estimatedCost?: number;
+  id: string;
+  title: string;
+  description: string;
+  deadline: string;
+  universityName: string;
+  priority: 'high' | 'medium' | 'low';
+  completed: boolean;
+  type: 'application' | 'test' | 'document' | 'scholarship' | 'visa';
+  estimatedCost?: number;
+  phase: number;
+}
+
+interface TimelinePhase {
+  phase: number;
+  title: string;
+  description: string;
+  duration: string;
+  steps: TimelineStep[];
 }
 
 export const TimelineSection = () => {
- const [user] = useAuthState(auth);
- const [favoriteUniversities, setFavoriteUniversities] = useState<FavoriteUniversity[]>([]);
- const [personalizedTimeline, setPersonalizedTimeline] = useState<TimelineStep[]>([]);
- const [loading, setLoading] = useState(true);
- const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
+  const [user] = useAuthState(auth);
+  const [favoriteUniversities, setFavoriteUniversities] = useState<FavoriteUniversity[]>([]);
+  const [timelinePhases, setTimelinePhases] = useState<TimelinePhase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
+  const [currentPhase, setCurrentPhase] = useState(0);
+  const router = useRouter();
 
- useEffect(() => {
-   if (user) {
-     fetchFavoriteUniversities();
-   }
- }, [user]);
+  useEffect(() => {
+    if (user) {
+      fetchFavoriteUniversities();
+    }
+  }, [user]);
 
- const fetchFavoriteUniversities = async () => {
-   try {
-     const favoritesRef = collection(db, 'favorites');
-     const q = query(
-       favoritesRef, 
-       where('userId', '==', user?.uid),
-       orderBy('createdAt', 'desc')
-     );
-     const querySnapshot = await getDocs(q);
-     
-     const favorites: FavoriteUniversity[] = [];
-     querySnapshot.forEach((doc) => {
-       favorites.push({ id: doc.id, ...doc.data() } as FavoriteUniversity);
-     });
-     
-     setFavoriteUniversities(favorites);
-     const timeline = generatePersonalizedTimeline(favorites);
-     setPersonalizedTimeline(timeline);
-   } catch (error) {
-     console.error('Error fetching favorites:', error);
-   } finally {
-     setLoading(false);
-   }
- };
+  const fetchFavoriteUniversities = async () => {
+    try {
+      const favoritesRef = collection(db, 'favorites');
+      const q = query(
+        favoritesRef, 
+        where('userId', '==', user?.uid)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      const favorites: FavoriteUniversity[] = [];
+      querySnapshot.forEach((doc) => {
+        favorites.push({ id: doc.id, ...doc.data() } as FavoriteUniversity);
+      });
+      
+      setFavoriteUniversities(favorites);
+      const phases = generateTimelinePhases(favorites);
+      setTimelinePhases(phases);
+      
+      
+      await loadProgressFromFirebase();
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
- const generatePersonalizedTimeline = (universities: FavoriteUniversity[]): TimelineStep[] => {
-   const steps: TimelineStep[] = [];
-   const today = new Date();
-   
-   universities.forEach((university, index) => {
-     const baseDate = new Date(today);
-     baseDate.setMonth(baseDate.getMonth() + 1);
-     
-     steps.push({
-       id: `lang-test-${university.id}`,
-       title: 'Complete Language Proficiency Test',
-       description: `Take IELTS/TOEFL for ${university.name} application`,
-       deadline: new Date(baseDate.getTime() + (index * 7 + 14) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-       universityName: university.name,
-       priority: 'high',
-       completed: false,
-       type: 'test',
-       estimatedCost: 3000000
-     });
+  const loadProgressFromFirebase = async () => {
+    try {
+      const progressRef = collection(db, 'timeline_progress');
+      const q = query(progressRef, where('userId', '==', user?.uid));
+      const querySnapshot = await getDocs(q);
+      
+      const completedSet = new Set<string>();
+      querySnapshot.forEach((doc) => {
+        if (doc.data().completed) {
+          completedSet.add(doc.data().stepId);
+        }
+      });
+      
+      setCompletedSteps(completedSet);
+    } catch (error) {
+      console.error('Error loading progress:', error);
+    }
+  };
 
-     steps.push({
-       id: `documents-${university.id}`,
-       title: 'Prepare Application Documents',
-       description: `Gather transcripts, certificates, and recommendation letters for ${university.name}`,
-       deadline: new Date(baseDate.getTime() + (index * 7 + 21) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-       universityName: university.name,
-       priority: 'high',
-       completed: false,
-       type: 'document'
-     });
+  const generateTimelinePhases = (universities: FavoriteUniversity[]): TimelinePhase[] => {
+    const phases: TimelinePhase[] = [
+      {
+        phase: 1,
+        title: "Preparation Phase",
+        description: "Documents and language requirements",
+        duration: "2-3 months",
+        steps: []
+      },
+      {
+        phase: 2,
+        title: "Application Phase", 
+        description: "Submit applications and scholarships",
+        duration: "1-2 months",
+        steps: []
+      },
+      {
+        phase: 3,
+        title: "Decision Phase",
+        description: "Wait for results and make decisions",
+        duration: "2-4 months", 
+        steps: []
+      },
+      {
+        phase: 4,
+        title: "Pre-Departure",
+        description: "Visa processing and preparation",
+        duration: "2-3 months",
+        steps: []
+      }
+    ];
 
-     steps.push({
-       id: `application-${university.id}`,
-       title: 'Submit University Application',
-       description: `Complete and submit application to ${university.name}`,
-       deadline: new Date(baseDate.getTime() + (index * 7 + 45) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-       universityName: university.name,
-       priority: 'high',
-       completed: false,
-       type: 'application',
-       estimatedCost: 1500000
-     });
+    const analysisData = localStorage.getItem('cvAnalysisResult');
+    if (!analysisData) {
+      console.log('No analysis data found in localStorage');
+      return phases;
+    }
 
-     steps.push({
-       id: `scholarship-${university.id}`,
-       title: 'Apply for Scholarships',
-       description: `Apply for available scholarships at ${university.name}`,
-       deadline: new Date(baseDate.getTime() + (index * 7 + 30) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-       universityName: university.name,
-       priority: 'medium',
-       completed: false,
-       type: 'scholarship'
-     });
+    try {
+      const parsedData = JSON.parse(analysisData);
+      
+      if (parsedData.preparation_steps) {
+        parsedData.preparation_steps.forEach((step: any, index: number) => {
+          const stepId = `prep-${index}-${step.action.replace(/\s+/g, '-').toLowerCase()}`;
+          
+          let targetPhase = 1;
+          let stepType: 'application' | 'test' | 'document' | 'scholarship' | 'visa' = 'document';
+          
+          if (step.action.toLowerCase().includes('ielts') || step.action.toLowerCase().includes('toefl') || step.action.toLowerCase().includes('test')) {
+            targetPhase = 1;
+            stepType = 'test';
+          } else if (step.action.toLowerCase().includes('transcript') || step.action.toLowerCase().includes('document')) {
+            targetPhase = 1;
+            stepType = 'document';
+          } else if (step.action.toLowerCase().includes('scholarship') || step.action.toLowerCase().includes('essay')) {
+            targetPhase = 2;
+            stepType = 'scholarship';
+          } else if (step.action.toLowerCase().includes('application') || step.action.toLowerCase().includes('apply')) {
+            targetPhase = 2;
+            stepType = 'application';
+          } else if (step.action.toLowerCase().includes('visa')) {
+            targetPhase = 4;
+            stepType = 'visa';
+          }
 
-     steps.push({
-       id: `visa-${university.id}`,
-       title: 'Student Visa Application',
-       description: `Apply for student visa to ${university.country}`,
-       deadline: new Date(baseDate.getTime() + (index * 7 + 90) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-       universityName: university.name,
-       priority: 'medium',
-       completed: false,
-       type: 'visa',
-       estimatedCost: 5000000
-     });
-   });
+          let deadlineDate = new Date();
+          if (step.deadline) {
+            if (step.deadline.toLowerCase().includes('month')) {
+              const months = parseInt(step.deadline.match(/\d+/)?.[0] || '3');
+              deadlineDate.setMonth(deadlineDate.getMonth() + months);
+            } else if (step.deadline.toLowerCase().includes('week')) {
+              const weeks = parseInt(step.deadline.match(/\d+/)?.[0] || '6');
+              deadlineDate.setDate(deadlineDate.getDate() + (weeks * 7));
+            } else {
+              deadlineDate.setMonth(deadlineDate.getMonth() + 3);
+            }
+          }
 
-   return steps.sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
- };
+          phases[targetPhase - 1].steps.push({
+            id: stepId,
+            title: step.action,
+            description: `${step.action} - ${step.deadline}`,
+            deadline: deadlineDate.toISOString().split('T')[0],
+            universityName: 'All Applications',
+            priority: step.priority || 'medium',
+            completed: false,
+            type: stepType,
+            estimatedCost: step.cost_idr || 0,
+            phase: targetPhase
+          });
+        });
+      }
 
- const toggleStepCompletion = (stepId: string) => {
-   const newCompletedSteps = new Set(completedSteps);
-   if (newCompletedSteps.has(stepId)) {
-     newCompletedSteps.delete(stepId);
-   } else {
-     newCompletedSteps.add(stepId);
-   }
-   setCompletedSteps(newCompletedSteps);
-   
-   setPersonalizedTimeline(prev => 
-     prev.map(step => 
-       step.id === stepId 
-         ? { ...step, completed: !step.completed }
-         : step
-     )
-   );
- };
+      if (parsedData.scholarship_priorities) {
+        parsedData.scholarship_priorities.forEach((scholarship: any, index: number) => {
+          const stepId = `scholarship-${index}-${scholarship.name.replace(/\s+/g, '-').toLowerCase()}`;
+          
+          let deadlineDate = new Date();
+          if (scholarship.deadline) {
+            try {
+              deadlineDate = new Date(scholarship.deadline);
+            } catch {
+              deadlineDate.setMonth(deadlineDate.getMonth() + 6); 
+            }
+          }
 
- const getPriorityColor = (priority: string) => {
-   switch (priority) {
-     case 'high': return 'text-red-600 bg-red-50 border-red-200';
-     case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-     default: return 'text-green-600 bg-green-50 border-green-200';
-   }
- };
+          phases[1].steps.push({
+            id: stepId,
+            title: `Apply for ${scholarship.name}`,
+            description: `Submit application for ${scholarship.name} - ${scholarship.coverage_percentage}% coverage`,
+            deadline: deadlineDate.toISOString().split('T')[0],
+            universityName: 'Scholarship Application',
+            priority: scholarship.success_probability === 'high' ? 'high' : scholarship.success_probability === 'medium' ? 'medium' : 'low',
+            completed: false,
+            type: 'scholarship',
+            estimatedCost: 0, 
+            phase: 2
+          });
+        });
+      }
 
- const getTypeIcon = (type: string) => {
-   switch (type) {
-     case 'application': return <Target className="w-4 h-4" />;
-     case 'test': return <AlertCircle className="w-4 h-4" />;
-     case 'document': return <Calendar className="w-4 h-4" />;
-     case 'scholarship': return <Star className="w-4 h-4" />;
-     case 'visa': return <MapPin className="w-4 h-4" />;
-     default: return <Clock className="w-4 h-4" />;
-   }
- };
+      
+      universities.forEach((university) => {
+        
+        const applicationDeadline = new Date();
+        applicationDeadline.setMonth(applicationDeadline.getMonth() + 4); 
 
- const formatCurrency = (amount: number | undefined) => {
-   if (!amount) return '';
-   return new Intl.NumberFormat('id-ID', {
-     style: 'currency',
-     currency: 'IDR',
-     minimumFractionDigits: 0,
-     maximumFractionDigits: 0,
-   }).format(amount);
- };
+        phases[1].steps.push({
+          id: `app-${university.id}`,
+          title: `Submit Application to ${university.name}`,
+          description: `Complete and submit university application`,
+          deadline: applicationDeadline.toISOString().split('T')[0],
+          universityName: university.name,
+          priority: 'high',
+          completed: false,
+          type: 'application',
+          estimatedCost: 1000000, 
+          phase: 2
+        });
 
- const formatDate = (dateString: string) => {
-   return new Date(dateString).toLocaleDateString('id-ID', {
-     day: 'numeric',
-     month: 'long',
-     year: 'numeric'
-   });
- };
+        
+        const decisionDeadline = new Date();
+        decisionDeadline.setMonth(decisionDeadline.getMonth() + 6); 
 
- const isOverdue = (deadline: string) => {
-   return new Date(deadline) < new Date();
- };
+        phases[2].steps.push({
+          id: `decision-${university.id}`,
+          title: `Admission Decision from ${university.name}`,
+          description: `Wait for admission decision and respond if accepted`,
+          deadline: decisionDeadline.toISOString().split('T')[0],
+          universityName: university.name,
+          priority: 'medium',
+          completed: false,
+          type: 'application',
+          phase: 3
+        });
 
- if (loading) {
-   return (
-     <div className="flex items-center justify-center h-64">
-       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-     </div>
-   );
- }
+        
+        const visaDeadline = new Date();
+        visaDeadline.setMonth(visaDeadline.getMonth() + 8); 
 
- if (favoriteUniversities.length === 0) {
-   return (
-     <div className="text-center py-12">
-       <Star className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-       <h3 className="text-lg font-medium text-gray-900 mb-2">No Favorite Universities</h3>
-       <p className="text-gray-600 mb-6">Add universities to favorites to see your personalized timeline</p>
-       <Button onClick={() => window.location.href = '/result'}>
-         Browse Universities
-       </Button>
-     </div>
-   );
- }
+        phases[3].steps.push({
+          id: `visa-${university.id}`,
+          title: `Apply for Student Visa - ${university.country}`,
+          description: `Submit student visa application for ${university.country}`,
+          deadline: visaDeadline.toISOString().split('T')[0],
+          universityName: university.name,
+          priority: 'high',
+          completed: false,
+          type: 'visa',
+          estimatedCost: 5000000, 
+          phase: 4
+        });
+      });
 
- const completedCount = personalizedTimeline.filter(step => step.completed).length;
- const totalSteps = personalizedTimeline.length;
- const progressPercentage = totalSteps > 0 ? (completedCount / totalSteps) * 100 : 0;
+    } catch (error) {
+      console.error('Error parsing analysis data:', error);
+    }
 
- return (
-   <div className="space-y-6">
-     <div className="grid md:grid-cols-3 gap-4">
-       <Card>
-         <CardContent className="p-6">
-           <div className="flex items-center justify-between">
-             <div>
-               <p className="text-sm font-medium text-gray-600">Progress</p>
-               <p className="text-2xl font-bold text-blue-900">{completedCount}/{totalSteps}</p>
-             </div>
-             <CheckCircle className="w-8 h-8 text-blue-500" />
-           </div>
-           <div className="mt-3 bg-gray-200 rounded-full h-2">
-             <div 
-               className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-               style={{ width: `${progressPercentage}%` }}
-             ></div>
-           </div>
-         </CardContent>
-       </Card>
+    return phases;
+  };
 
-       <Card>
-         <CardContent className="p-6">
-           <div className="flex items-center justify-between">
-             <div>
-               <p className="text-sm font-medium text-gray-600">Favorite Universities</p>
-               <p className="text-2xl font-bold text-green-900">{favoriteUniversities.length}</p>
-             </div>
-             <Star className="w-8 h-8 text-yellow-500" />
-           </div>
-         </CardContent>
-       </Card>
+  const toggleStepCompletion = async (stepId: string) => {
+    try {
+      const newCompletedSteps = new Set(completedSteps);
+      const isCompleting = !newCompletedSteps.has(stepId);
+      
+      if (isCompleting) {
+        newCompletedSteps.add(stepId);
+      } else {
+        newCompletedSteps.delete(stepId);
+      }
+      
+      setCompletedSteps(newCompletedSteps);
+      
+      
+      await addDoc(collection(db, 'timeline_progress'), {
+        userId: user?.uid,
+        stepId: stepId,
+        completed: isCompleting,
+        completedAt: new Date(),
+        updatedAt: new Date()
+      });
+      
+      
+      setTimelinePhases(prev => 
+        prev.map(phase => ({
+          ...phase,
+          steps: phase.steps.map(step => 
+            step.id === stepId 
+              ? { ...step, completed: isCompleting }
+              : step
+          )
+        }))
+      );
 
-       <Card>
-         <CardContent className="p-6">
-           <div className="flex items-center justify-between">
-             <div>
-               <p className="text-sm font-medium text-gray-600">Upcoming Deadlines</p>
-               <p className="text-2xl font-bold text-red-900">
-                 {personalizedTimeline.filter(step => !step.completed && !isOverdue(step.deadline)).length}
-               </p>
-             </div>
-             <AlertCircle className="w-8 h-8 text-red-500" />
-           </div>
-         </CardContent>
-       </Card>
-     </div>
+      updateCurrentPhase();
+    } catch (error) {
+      console.error('Error updating step completion:', error);
+    }
+  };
 
-     <div className="grid md:grid-cols-2 gap-6">
-       <Card>
-         <CardHeader>
-           <CardTitle className="flex items-center gap-2">
-             <Star className="w-5 h-5" />
-             Your Favorite Universities
-           </CardTitle>
-         </CardHeader>
-         <CardContent>
-           <div className="space-y-3">
-             {favoriteUniversities.map((university) => (
-               <div key={university.id} className="p-3 border border-gray-200 rounded-lg">
-                 <div className="flex justify-between items-start mb-2">
-                   <h4 className="font-medium text-gray-900">{university.name}</h4>
-                   <Badge variant="outline">{university.matchScore}/10</Badge>
-                 </div>
-                 <p className="text-sm text-gray-600 flex items-center gap-1">
-                   <MapPin className="w-3 h-3" />
-                   {university.city}, {university.country}
-                 </p>
-                 <p className="text-sm font-medium text-green-600 mt-1">
-                   {formatCurrency(university.netCost)}/year
-                 </p>
-               </div>
-             ))}
-           </div>
-         </CardContent>
-       </Card>
+  const updateCurrentPhase = () => {
+    for (let i = 0; i < timelinePhases.length; i++) {
+      const phase = timelinePhases[i];
+      const completedInPhase = phase.steps.filter(step => completedSteps.has(step.id)).length;
+      const totalInPhase = phase.steps.length;
+      
+      if (completedInPhase < totalInPhase) {
+        setCurrentPhase(i);
+        break;
+      }
+      if (i === timelinePhases.length - 1) {
+        setCurrentPhase(i);
+      }
+    }
+  };
 
-       <Card>
-         <CardHeader>
-           <CardTitle className="flex items-center gap-2">
-             <Calendar className="w-5 h-5" />
-             Personalized Timeline
-           </CardTitle>
-         </CardHeader>
-         <CardContent>
-           <div className="space-y-4 max-h-96 overflow-y-auto">
-             {personalizedTimeline.map((step, index) => (
-               <div key={step.id} className="relative flex items-start space-x-3">
-                 <div className="flex flex-col items-center">
-                   <button
-                     onClick={() => toggleStepCompletion(step.id)}
-                     className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${
-                       step.completed 
-                         ? 'bg-green-500 border-green-500 text-white' 
-                         : 'border-gray-300 hover:border-gray-400'
-                     }`}
-                   >
-                     {step.completed ? (
-                       <CheckCircle className="w-4 h-4" />
-                     ) : (
-                       getTypeIcon(step.type)
-                     )}
-                   </button>
-                   {index < personalizedTimeline.length - 1 && (
-                     <div className="w-0.5 h-12 bg-gray-200 mt-2"></div>
-                   )}
-                 </div>
-                 
-                 <div className="flex-1 min-w-0">
-                   <div className={`p-3 rounded-lg border transition-all ${
-                     step.completed ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
-                   } ${isOverdue(step.deadline) && !step.completed ? 'border-red-300 bg-red-50' : ''}`}>
-                     <div className="flex justify-between items-start mb-2">
-                       <h4 className={`font-medium ${step.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                         {step.title}
-                       </h4>
-                       <Badge className={getPriorityColor(step.priority)}>
-                         {step.priority}
-                       </Badge>
-                     </div>
-                     
-                     <p className={`text-sm mb-2 ${step.completed ? 'text-gray-500' : 'text-gray-600'}`}>
-                       {step.description}
-                     </p>
-                     
-                     <div className="flex justify-between items-center text-sm">
-                       <span className={`flex items-center gap-1 ${
-                         isOverdue(step.deadline) && !step.completed ? 'text-red-600 font-medium' : 'text-gray-500'
-                       }`}>
-                         <Clock className="w-3 h-3" />
-                         {formatDate(step.deadline)}
-                       </span>
-                       {step.estimatedCost && (
-                         <span className="font-medium text-gray-700">
-                           {formatCurrency(step.estimatedCost)}
-                         </span>
-                       )}
-                     </div>
-                     
-                     <p className="text-xs text-gray-500 mt-1">
-                       For: {step.universityName}
-                     </p>
-                   </div>
-                 </div>
-               </div>
-             ))}
-           </div>
-         </CardContent>
-       </Card>
-     </div>
-   </div>
- );
+  const getPriorityBadgeVariant = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'destructive';
+      case 'medium': return 'secondary';
+      default: return 'outline';
+    }
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'application': return <Target className="w-4 h-4" />;
+      case 'test': return <BookOpen className="w-4 h-4" />;
+      case 'document': return <FileText className="w-4 h-4" />;
+      case 'scholarship': return <Award className="w-4 h-4" />;
+      case 'visa': return <Plane className="w-4 h-4" />;
+      default: return <Clock className="w-4 h-4" />;
+    }
+  };
+
+  const formatCurrency = (amount: number | undefined) => {
+    if (!amount) return '';
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  const isOverdue = (deadline: string) => {
+    return new Date(deadline) < new Date();
+  };
+
+  const calculatePhaseProgress = (phase: TimelinePhase) => {
+    const completed = phase.steps.filter(step => completedSteps.has(step.id)).length;
+    return phase.steps.length > 0 ? (completed / phase.steps.length) * 100 : 0;
+  };
+
+  const totalProgress = () => {
+    const allSteps = timelinePhases.flatMap(phase => phase.steps);
+    const completedCount = allSteps.filter(step => completedSteps.has(step.id)).length;
+    return allSteps.length > 0 ? (completedCount / allSteps.length) * 100 : 0;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-sm text-muted-foreground">Loading your timeline...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (favoriteUniversities.length === 0) {
+    return (
+      <div className="min-h-screen">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center mb-8">
+            <Button 
+              variant="ghost" 
+              onClick={() => router.back()}
+              className="mr-4"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Application Timeline</h1>
+              <p className="text-muted-foreground">Track your university application progress</p>
+            </div>
+          </div>
+          
+          <Card>
+            <CardContent className="text-center py-12">
+              <Star className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Favorite Universities</h3>
+              <p className="text-muted-foreground mb-6">Add universities to favorites to create your personalized timeline</p>
+              <Button onClick={() => router.push('/analyze-result')}>
+                Browse Universities
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center">
+            <Button 
+              variant="ghost" 
+              onClick={() => router.back()}
+              className="mr-4"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Application Timeline</h1>
+              <p className="text-muted-foreground">{favoriteUniversities.length} universities • {timelinePhases.flatMap(p => p.steps).length} total steps</p>
+            </div>
+          </div>
+          
+          <div className="text-right">
+            <p className="text-sm text-muted-foreground">Overall Progress</p>
+            <p className="text-2xl font-bold">{Math.round(totalProgress())}%</p>
+          </div>
+        </div>
+
+        {/* Progress Overview */}
+        <Card className="mb-8">
+          <CardContent className="p-6">
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Progress</span>
+                <span className="text-sm text-muted-foreground">{Math.round(totalProgress())}%</span>
+              </div>
+              <Progress value={totalProgress()} className="h-2" />
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold">{timelinePhases.flatMap(p => p.steps).filter(s => completedSteps.has(s.id)).length}</p>
+                <p className="text-sm text-muted-foreground">Completed</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold">{timelinePhases.flatMap(p => p.steps).filter(s => !completedSteps.has(s.id) && !isOverdue(s.deadline)).length}</p>
+                <p className="text-sm text-muted-foreground">Pending</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-destructive">{timelinePhases.flatMap(p => p.steps).filter(s => !completedSteps.has(s.id) && isOverdue(s.deadline)).length}</p>
+                <p className="text-sm text-muted-foreground">Overdue</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold">{favoriteUniversities.length}</p>
+                <p className="text-sm text-muted-foreground">Universities</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Horizontal Timeline */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold">Application Phases</h2>
+            <div className="flex space-x-2">
+              {timelinePhases.map((phase, index) => (
+                <div
+                  key={phase.phase}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    calculatePhaseProgress(phase) === 100 
+                      ? 'bg-primary' 
+                      : index === currentPhase 
+                        ? 'bg-primary/60' 
+                        : 'bg-muted'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="relative">
+            {/* Timeline Line */}
+            <div className="absolute top-16 left-0 right-0 h-0.5 bg-border">
+              <div 
+                className="h-full bg-primary transition-all duration-500"
+                style={{ width: `${totalProgress()}%` }}
+              />
+            </div>
+
+            {/* Timeline Phases */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {timelinePhases.map((phase, index) => (
+                <Card key={phase.phase} className={`transition-all ${index === currentPhase ? 'ring-1 ring-primary' : ''}`}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-bold ${
+                        calculatePhaseProgress(phase) === 100 
+                          ? 'bg-primary text-primary-foreground border-primary' 
+                          : index === currentPhase 
+                            ? 'border-primary text-primary' 
+                            : 'border-muted-foreground text-muted-foreground'
+                      }`}>
+                        {calculatePhaseProgress(phase) === 100 ? (
+                          <CheckCircle2 className="w-4 h-4" />
+                        ) : (
+                          phase.phase
+                        )}
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {Math.round(calculatePhaseProgress(phase))}%
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-base">{phase.title}</CardTitle>
+                    <p className="text-sm text-muted-foreground">{phase.description}</p>
+                    <p className="text-xs text-muted-foreground">{phase.duration}</p>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <Progress value={calculatePhaseProgress(phase)} className="mb-3 h-1" />
+                    <div className="space-y-2">
+                      {phase.steps.slice(0, 3).map((step) => (
+                        <div
+                          key={step.id}
+                          className={`p-2 rounded border text-xs transition-all cursor-pointer hover:bg-muted/50 ${
+                            completedSteps.has(step.id)
+                              ? 'bg-muted border-border' 
+                              : isOverdue(step.deadline) 
+                                ? 'border-destructive/50 bg-destructive/5' 
+                                : 'border-border'
+                          }`}
+                          onClick={() => toggleStepCompletion(step.id)}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center space-x-2">
+                              <div className={`w-3 h-3 rounded-full border flex items-center justify-center ${
+                                completedSteps.has(step.id)
+                                  ? 'bg-primary border-primary' 
+                                  : 'border-muted-foreground'
+                              }`}>
+                                {completedSteps.has(step.id) && <CheckCircle2 className="w-2 h-2 text-primary-foreground" />}
+                              </div>
+                              <span className={completedSteps.has(step.id) ? 'line-through text-muted-foreground' : ''}>
+                                {step.title}
+                              </span>
+                            </div>
+                            {getTypeIcon(step.type)}
+                          </div>
+                          <p className="text-xs text-muted-foreground ml-5">
+                            {formatDate(step.deadline)}
+                          </p>
+                        </div>
+                      ))}
+                      {phase.steps.length > 3 && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          +{phase.steps.length - 3} more steps
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Detailed Steps List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>All Steps</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {timelinePhases.map((phase) => (
+                <div key={phase.phase}>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <span className={`w-6 h-6 rounded-full text-xs flex items-center justify-center ${
+                      calculatePhaseProgress(phase) === 100 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {phase.phase}
+                    </span>
+                    {phase.title}
+                  </h3>
+                  <div className="space-y-2 ml-8">
+                    {phase.steps.map((step) => (
+                      <div
+                        key={step.id}
+                        className={`p-3 rounded border transition-all cursor-pointer hover:bg-muted/50 ${
+                          completedSteps.has(step.id)
+                            ? 'bg-muted border-border' 
+                            : isOverdue(step.deadline) 
+                              ? 'border-destructive/50 bg-destructive/5' 
+                              : 'border-border'
+                        }`}
+                        onClick={() => toggleStepCompletion(step.id)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start space-x-3">
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${
+                              completedSteps.has(step.id)
+                                ? 'bg-primary border-primary' 
+                                : 'border-muted-foreground'
+                            }`}>
+                              {completedSteps.has(step.id) && <CheckCircle2 className="w-3 h-3 text-primary-foreground" />}
+                            </div>
+                            <div className="flex-1">
+                              <h4 className={`font-medium ${completedSteps.has(step.id) ? 'line-through text-muted-foreground' : ''}`}>
+                                {step.title}
+                              </h4>
+                              <p className="text-sm text-muted-foreground mt-1">{step.description}</p>
+                              <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {formatDate(step.deadline)}
+                                </span>
+                                <span>For: {step.universityName}</span>
+                                {step.estimatedCost && (
+                                  <span className="flex items-center gap-1">
+                                    <DollarSign className="w-3 h-3" />
+                                    {formatCurrency(step.estimatedCost)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={getPriorityBadgeVariant(step.priority)} className="text-xs">
+                              {step.priority}
+                            </Badge>
+                            {getTypeIcon(step.type)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {phase.phase < timelinePhases.length && <Separator className="mt-6" />}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Favorite Universities Summary */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Star className="w-5 h-5" />
+              Your Target Universities
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {favoriteUniversities.map((university) => (
+                <Card key={university.id} className="p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <h4 className="font-semibold">{university.name}</h4>
+                    <Badge variant="outline">{university.matchScore}/10</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1 mb-2">
+                    <MapPin className="w-3 h-3" />
+                    {university.city}, {university.country}
+                  </p>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-medium">
+                      {formatCurrency(university.netCost)}/year
+                    </span>
+                    {university.ranking && (
+                      <span className="text-muted-foreground">#{university.ranking}</span>
+                    )}
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    {university.programs.length} program{university.programs.length > 1 ? 's' : ''} available
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
 };
