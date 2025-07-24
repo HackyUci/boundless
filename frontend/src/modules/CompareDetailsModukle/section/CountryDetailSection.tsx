@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { CheckIcon, ChevronsUpDownIcon, ArrowRightIcon, RotateCcwIcon } from "lucide-react";
+import { CheckIcon, ChevronDown, ArrowRightIcon, RotateCcwIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,8 +61,8 @@ function CountryComboBox({
           aria-expanded={open}
           className="w-full justify-between"
         >
-          {value ? value : `Select ${label}...`}
-          <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          {value ? value : `${label}...`}
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0">
@@ -207,7 +207,7 @@ export const CompareDetailSection: React.FC<CompareDetailSectionProps> = ({
         <div className="col-span-2 space-y-3">
           <Label className="text-sm font-semibold">Where are you from?</Label>
           <CountryComboBox
-            label="Origin Country"
+            label="Residence"
             value={originCountry}
             setValue={setOriginCountry}
             countries={countries}
@@ -222,7 +222,7 @@ export const CompareDetailSection: React.FC<CompareDetailSectionProps> = ({
         <div className="col-span-2 space-y-3">
           <Label className="text-sm font-semibold">Where do you want to go?</Label>
           <CountryComboBox
-            label="Destination Country"
+            label="Destination"
             value={destinationCountry}
             setValue={setDestinationCountry}
             countries={countries}
