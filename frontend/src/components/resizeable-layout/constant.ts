@@ -6,8 +6,13 @@ export const FEATURE_BUTTONS = [
   {
     id: "cv-analyzer",
     label: "CV Analyzer",
-  }
+  },
+  {
+    id: "chatbot",
+    label: "Chatbot",
+  },
+
 ] as const;
 
-export type FeatureButtonId = "comparison-details" | "cv-analyzer";
+export type FeatureButtonId = "comparison-details" | "cv-analyzer" | "chatbot";
 
