@@ -7,7 +7,7 @@ import Cookies from "js-cookie"
 
 interface DecodedToken {
   exp: number;
-  uid: string;
+  user_id: string;
   email: string;
 }
 
