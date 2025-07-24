@@ -11,8 +11,9 @@ export function Navbar({ className, ...props }: React.HTMLAttributes<HTMLElement
   const { isLoggedIn, isLoading, logout, user } = useAuth()
 
   const navLinks = [
+    ({ href: "/", label: "About us", loggedIn: false }),
     { href: "/discover", label: "Discover", loggedIn: true },
-    { href: "/roadmap", label: "Preparation Roadmap", loggedIn: true },
+    { href: "/timeline", label: "Preparation Roadmap", loggedIn: true },
     { href: "/scholarships", label: "Scholarships", loggedIn: true },
   ]
 

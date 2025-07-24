@@ -9,29 +9,39 @@ interface DecodedToken {
 }
 
 export function middleware(request: NextRequest) {
-  const publicPaths = ["/", "/login", "/register"];
+  const publicPaths = ["/"];
+  const authPaths = ["/login", "/register"];
   const pathname = request.nextUrl.pathname;
+
+  const token = request.cookies.get("authToken")?.value;
+  let isAuthenticated = false;
+
+  if (token) {
+    try {
+      const decoded = jwtDecode<DecodedToken>(token);
+      isAuthenticated = Date.now() < decoded.exp * 1000;
+    } catch {
+      isAuthenticated = false;
+    }
+  }
+
+  if (isAuthenticated && authPaths.includes(pathname)) {
+    return NextResponse.redirect(new URL("/discover", request.url));
+  }
 
   if (publicPaths.includes(pathname)) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get("authToken")?.value;
+  if (authPaths.includes(pathname)) {
+    return NextResponse.next();
+  }
 
-  if (!token) {
+  if (!isAuthenticated) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  try {
-    const decoded = jwtDecode<DecodedToken>(token);
-    if (Date.now() >= decoded.exp * 1000) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
-
-    return NextResponse.next(); 
-  } catch {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
+  return NextResponse.next(); 
 }
 
 export const config = {
