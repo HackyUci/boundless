@@ -20,46 +20,54 @@ class ChatbotService:
        self.conversation_history = []
    
    def chat(self, user_message):
-       try:
-           context_prompt = self._build_context_prompt()
-           
-           full_prompt = f"""
-           {context_prompt}
-           
-           Previous conversation:
-           {self._format_conversation_history()}
-           
-           User question: {user_message}
-           
-           Provide helpful, specific answers based on the CV analysis context. If the question is about:
-           - Universities: Give detailed info about programs, admission requirements, costs
-           - Scholarships: Provide current opportunities, deadlines, application tips
-           - Countries: Discuss living conditions, culture, visa requirements
-           - Preparation: Give step-by-step guidance and timelines
-           - Budget: Break down costs and financial planning advice
-           - General study abroad: Provide comprehensive guidance
-           
-           Keep responses conversational but informative. Use the CV context to personalize advice.
-           """
-           
-           response = self.model.generate_content(full_prompt)
-           
-           self.conversation_history.append({
-               "user": user_message,
-               "assistant": response.text,
-               "timestamp": datetime.now().isoformat()
-           })
-           
-           if len(self.conversation_history) > 10:
-               self.conversation_history = self.conversation_history[-8:]
-           
-           return {
-               "response": response.text,
-               "conversation_id": len(self.conversation_history)
-           }
-           
-       except Exception as e:
-           return {"error": f"Chat error: {str(e)}"}
+        try:
+            context_prompt = self._build_context_prompt()
+
+            full_prompt = f"""
+            {context_prompt}
+
+            Previous conversation:
+            {self._format_conversation_history()}
+
+            User question: {user_message}
+
+            You're a friendly, conversational assistant who loves chatting about study-related topics, especially about studying abroad or at top universities like Universitas Indonesia (UI). Respond in a casual, engaging tone, like you're talking to a friend. For example, if the user asks, "Tell me about Universitas Indonesia," respond like: "Wow, UI? That's a top-notch choice! It's one of Indonesia's best universities, known for its strong programs in [insert fields]. Are you an Indonesian citizen or coming from abroad? Oh, and do you want the lowdown on stuff like UKT (tuition fees) or admission details?"
+
+            Follow these guidelines:
+            - For universities (like UI): Share details about programs, admission requirements, campus vibe, and costs (e.g., UKT for locals or international student fees).
+            - For scholarships: List current opportunities, deadlines, and application tips.
+            - For countries: Talk about living conditions, culture, and visa requirements.
+            - For preparation: Provide clear, step-by-step guidance and timelines.
+            - For budget: Break down costs and give practical financial planning tips.
+            - For general study abroad: Offer comprehensive, easy-to-follow advice.
+            - Personalize responses using the CV context (e.g., user's background, interests, or goals) to make it relevant.
+            - Keep the tone light, friendly, and conversational, but pack it with useful info. Avoid formal formatting like bold or italics.
+            - If the user seems curious about something specific (e.g., UKT, programs), ask a follow-up question to keep the chat flowing, like "Hey, you want me to dig into the UKT details or maybe the international student process?"
+
+            Example response for "Tell me about Universitas Indonesia":
+            "Yo, UI is awesome! It’s like the gold standard in Indonesia, sitting pretty in Depok and Jakarta. Known for killer programs in medicine, engineering, and social sciences. The campus has this cool mix of modern vibes and green spaces. You thinking of applying? Are you from Indonesia or abroad? Oh, and you want details on the UKT fees or maybe how to get in as an international student?"
+
+            Now, respond to the user's question: {user_message}
+            """
+
+            response = self.model.generate_content(full_prompt)
+
+            self.conversation_history.append({
+                "user": user_message,
+                "assistant": response.text,
+                "timestamp": datetime.now().isoformat()
+            })
+
+            if len(self.conversation_history) > 10:
+                self.conversation_history = self.conversation_history[-8:]
+
+            return {
+                "response": response.text,
+                "conversation_id": len(self.conversation_history)
+            }
+
+        except Exception as e:
+            return {"error": f"Chat error: {str(e)}"}
    
    def ask_about_universities(self, university_name, specific_question=None):
        try:
