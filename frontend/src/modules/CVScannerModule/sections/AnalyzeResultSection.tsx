@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { 
   ArrowLeft,
+  ArrowRight,
   Star,
   MapPin, 
   DollarSign, 
@@ -18,7 +19,6 @@ import {
   Award,
   AlertCircle,
   CheckCircle,
-  Calendar,
   Target,
   TrendingUp,
   Zap
@@ -28,7 +28,6 @@ import { collection, addDoc, deleteDoc, query, where, getDocs } from 'firebase/f
 import { db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
-import { TimelineSection } from './TimelineSection';
 
 interface Program {
  jurusan: string;
@@ -204,8 +203,12 @@ export const AnalyzeResultSection = () => {
        country: university.country,
        city: university.city,
        programs: university.programs,
+       totalCost: university.totalCost,
+       scholarshipAmount: university.scholarshipAmount,
        netCost: university.netCost,
+       withinBudget: university.withinBudget,
        matchScore: university.matchScore,
+       reasoning: university.reasoning,
        ranking: university.ranking,
        createdAt: new Date()
      });
@@ -265,6 +268,14 @@ export const AnalyzeResultSection = () => {
    if (score >= 8) return 'bg-green-500';
    if (score >= 6) return 'bg-yellow-500';
    return 'bg-red-500';
+ };
+
+ const getPriorityColor = (priority: string) => {
+   switch (priority) {
+     case 'high': return 'text-red-600 bg-red-50 border-red-200';
+     case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+     default: return 'text-green-600 bg-green-50 border-green-200';
+   }
  };
 
  const OverviewContent = () => (
@@ -447,10 +458,6 @@ export const AnalyzeResultSection = () => {
        ))}
      </div>
    </div>
- );
-
- const TimelineContent = () => (
-   <TimelineSection />
  );
 
  const ImprovementContent = () => (
@@ -664,7 +671,7 @@ export const AnalyzeResultSection = () => {
            </div>
 
            <Tabs value={activeTheme} onValueChange={setActiveTheme} className="space-y-6">
-             <TabsList className="grid w-full grid-cols-6 h-12">
+             <TabsList className="grid w-full grid-cols-5 h-12">
                <TabsTrigger value="overview" className="flex items-center gap-2">
                  <Target className="w-4 h-4" />
                  Overview
@@ -676,10 +683,6 @@ export const AnalyzeResultSection = () => {
                <TabsTrigger value="scholarships" className="flex items-center gap-2">
                  <Award className="w-4 h-4" />
                  Scholarships
-               </TabsTrigger>
-               <TabsTrigger value="timeline" className="flex items-center gap-2">
-                 <Calendar className="w-4 h-4" />
-                 Timeline
                </TabsTrigger>
                <TabsTrigger value="improvement" className="flex items-center gap-2">
                  <Zap className="w-4 h-4" />
@@ -703,10 +706,6 @@ export const AnalyzeResultSection = () => {
                <ScholarshipContent />
              </TabsContent>
 
-             <TabsContent value="timeline" className="space-y-6">
-               <TimelineContent />
-             </TabsContent>
-
              <TabsContent value="improvement" className="space-y-6">
                <ImprovementContent />
              </TabsContent>
@@ -718,6 +717,18 @@ export const AnalyzeResultSection = () => {
          </div>
        </div>
      </div>
+
+     {favorites.size > 0 && user && (
+       <div className="fixed bottom-6 right-6">
+         <Button 
+           onClick={navigateToTimeline}
+           className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 text-lg"
+         >
+           Next: View Timeline
+           <ArrowRight className="w-5 h-5" />
+         </Button>
+       </div>
+     )}
    </div>
  );
 };
