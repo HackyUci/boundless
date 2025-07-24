@@ -9,6 +9,7 @@ import { CVUpload } from "@/modules/CVScannerModule/components/CVUpload";
 import { FEATURE_BUTTONS, type FeatureButtonId } from "./constant";
 import MapComponent from "../Map";
 import CountryDetailsModule from "@/modules/CompareDetailsModukle";
+import { AIChatbotModule } from "@/modules/AIChatbotModule";
 
 interface City {
   city: string;
@@ -38,6 +39,8 @@ export default function ResizableLayout() {
         return <CountryDetailsModule selectedCity={selectedCity} />;
       case "cv-analyzer":
         return <CVUpload />;
+      case "chatbot":
+        return <AIChatbotModule />;
       default:
         return <div>Select a feature</div>;
     }
@@ -59,7 +62,7 @@ export default function ResizableLayout() {
               <div className="flex-1 px-8 translate-x-6 pt-4 top-0 mx-2 relative">
                 {renderFeatureContent()}
               </div>
-              <div className="flex justify-start rotate-90 -translate-x-1/2 ml-6 gap-1 absolute top-1/8 my-2">
+              <div className="flex justify-start rotate-90 -translate-x-1/2 ml-6 gap-1 absolute top-1/5 my-2">
                 {FEATURE_BUTTONS.map((button) => (
                   <div
                     key={button.id}
