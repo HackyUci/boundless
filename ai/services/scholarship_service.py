@@ -31,10 +31,10 @@ class ScholarshipService:
                        "scholarship_name": "exact scholarship name",
                        "provider": "government/university/foundation/corporate",
                        "amount_idr": "scholarship amount in IDR",
-                       "coverage": "what it covers (tuition/living/both)",
-                       "eligibility": "specific requirements for {user_country} students",
-                       "application_deadline": "exact deadline date",
-                       "notification_date": "when results are announced",
+                       "coverage": "[all the things covered and how much it covers, e.g. tuition(20000000), living expenses(10000000), travel(2000000)]",
+                       "eligibility": "[specific requirements for {user_country} students, e.g. Must be an Indonesian citizen, under 40 years of age, hold a Bachelor's degree, have a GPA above 80% from the last institution attended]",
+                       "application_deadline": "exact deadline date in YYYY-MM-DD format",
+                       "notification_date": "when results are announced int Month, Year format, e.g. January 2024",
                        "fits_timeline": "yes/no based on departure date",
                        "competitiveness": "high/medium/low competition level"
                    }}
@@ -44,38 +44,37 @@ class ScholarshipService:
                        {{
                            "document": "document name",
                            "description": "what this document is",
-                           "where_to_get": "specific office/institution in {user_country}",
-                           "processing_time": "how long it takes to obtain",
+                           "where_to_get": "simple and specific office/institution in {user_country}, e.g. Visa centers, local government offices, universities",
+                           "processing_time": "how long it takes to obtain in days, e.g. 7",
                            "cost_idr": "cost to obtain in IDR",
-                           "validity_period": "how long document remains valid"
+                           "validity_period": "how long document remains valid in days, weeks, months or years, e.g. 6 months or indefinite"
                        }}
                    ],
                    "tests_required": [
                        {{
                            "test_name": "IELTS/TOEFL/GRE/GMAT etc",
-                           "minimum_score": "required minimum score",
-                           "test_centers": "available centers in {user_country}",
+                           "minimum_score": "required or suggested minimum score, e.g. 6.5",
+                           "test_centers": "[available centers in {user_country}, e.g. British Council,TOEFL Test Centers]",
                            "registration_cost_idr": "test fee in IDR",
-                           "preparation_time": "recommended preparation duration",
-                           "validity_period": "how long scores remain valid"
+                           "preparation_time": "recommended preparation duration in days, weeks, months or years, e.g. 2 months",
+                           "validity_period": "how long scores remain valid in days, weeks, months or years, e.g. 2 years"
                        }}
                    ],
                    "academic_requirements": [
                        {{
                            "requirement": "GPA/transcripts/degree certificates",
-                           "minimum_standard": "minimum requirement",
+                           "minimum_standard": "simple and specific minimum requirement, e.g. 3.0 or above",
                            "verification_needed": "apostille/embassy verification required",
-                           "processing_time": "time needed for verification"
+                           "processing_time": "time needed for verification in days, weeks, months or years, e.g. 2 weeks"
                        }}
                    ]
                }},
                "critical_timeline": [
                    {{
-                       "date": "specific date (YYYY-MM-DD)",
+                       "date": "specific date in YYYY-MM-DD format",
                        "milestone": "what needs to be completed",
-                       "description": "detailed explanation of the task",
+                       "description": "simple but detailed explanation of the task. maximum 2 sentences",
                        "priority": "critical/high/medium",
-                       "consequences_if_missed": "what happens if this deadline is missed"
                    }}
                ],
                "preparation_phases": {{
@@ -123,20 +122,6 @@ class ScholarshipService:
                            }}
                        ]
                    }}
-               }},
-               "latest_start_date": {{
-                   "absolute_latest": "latest possible date to start preparation",
-                   "recommended_start": "recommended start date for comfortable preparation",
-                   "reasoning": "why this timeline is necessary",
-                   "risk_assessment": "risks of starting late"
-               }},
-               "visa_requirements": {{
-                   "visa_type": "student visa category",
-                   "processing_time": "typical processing duration",
-                   "required_documents": ["specific visa documents needed"],
-                   "cost_idr": "visa application cost in IDR",
-                   "embassy_location": "nearest embassy/consulate in {user_country}",
-                   "appointment_booking": "how far in advance to book appointment"
                }},
                "budget_breakdown": {{
                    "preparation_costs": "total cost for document preparation in IDR",
