@@ -1,0 +1,16 @@
+google-generativeai
+opencv-python
+Pillow
+PyPDF2
+python-docx
+streamlit
+pandas
+numpy
+python-dotenv
+requests
+matplotlib
+seaborn
+plotly
+scikit-learn
+flask
+flask-cors
