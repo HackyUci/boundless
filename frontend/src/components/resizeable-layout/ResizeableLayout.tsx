@@ -7,20 +7,35 @@ import {
 } from "@/components/ui/resizable";
 import { CVUpload } from "@/modules/CVScannerModule/components/CVUpload";
 import { FEATURE_BUTTONS, type FeatureButtonId } from "./constant";
+import MapComponent from "../Map";
+import CountryDetailsModule from "@/modules/CompareDetailsModukle";
+
+interface City {
+  city: string;
+  country: string;
+  lat: number;
+  lon: number;
+}
 
 export default function ResizableLayout() {
-  const [activeFeature, setActiveFeature] =
-    useState<FeatureButtonId>("country-details");
+  const [activeFeature, setActiveFeature] = useState<FeatureButtonId>("comparison-details");
+  const [selectedCity, setSelectedCity] = useState<City | null>(null);
 
   const handleButtonClick = (buttonId: FeatureButtonId) => {
     setActiveFeature(buttonId);
     console.log(`Button clicked: ${buttonId}`);
   };
 
+  const handleCityClick = (city: City) => {
+    setSelectedCity(city);
+    setActiveFeature("comparison-details"); 
+    console.log("City selected:", city);
+  };
+
   const renderFeatureContent = () => {
     switch (activeFeature) {
-      case "country-details":
-        return <div className="space-y-4"></div>;
+      case "comparison-details":
+        return <CountryDetailsModule selectedCity={selectedCity} />;
       case "cv-analyzer":
         return <CVUpload />;
       default:
@@ -35,16 +50,9 @@ export default function ResizableLayout() {
         className="min-h-full border rounded-lg"
       >
         <ResizablePanel defaultSize={60} minSize={30}>
-          <div className="flex h-full items-center justify-center bg-gray-50 dark:bg-gray-900">
-            <div className="text-center space-y-2">
-              <div className="text-6xl">🗺️</div>
-              <p className="text-muted-foreground">Map will be placed here</p>
-            </div>
-          </div>
+          <MapComponent onCityClick={handleCityClick} />
         </ResizablePanel>
-
         <ResizableHandle withHandle />
-
         <ResizablePanel defaultSize={40} minSize={25}>
           <div className="flex flex-col h-full overflow-y-auto">
             <div className="relative h-full">
