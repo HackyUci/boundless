@@ -10,7 +10,7 @@ import {
 import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Eye, EyeOff, Star, Crown, Users, Mail, Lock, User } from "lucide-react";
+import { Eye, EyeOff, Star, Users, Mail, Lock, User } from "lucide-react";
 
 import { auth, db } from "@/lib/firebase";
 import {
@@ -74,12 +74,18 @@ export default function RegisterPage() {
       });
 
       router.push("/");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      if (err.code === "auth/email-already-in-use") {
-        setFirebaseError("Email already in use");
+      if (typeof err === "object" && err !== null && "code" in err) {
+        const errorCode = (err as { code: string }).code;
+
+        if (errorCode === "auth/email-already-in-use") {
+          setFirebaseError("Email already in use");
+        } else {
+          setFirebaseError("Registration failed");
+        }
       } else {
-        setFirebaseError("Registration failed");
+        setFirebaseError("An unexpected error occurred");
       }
     }
   };

@@ -9,7 +9,6 @@ import { Progress } from '@/components/ui/progress';
 import { 
   ArrowLeft,
   Star,
-  GraduationCap, 
   MapPin, 
   DollarSign, 
   Shield, 
@@ -124,7 +123,8 @@ export const AnalyzeResultSection = () => {
         } else {
           setError("No analysis data found. Please upload your CV first.");
         }
-      } catch (err) {
+      } catch (err: unknown) {
+        console.error(err);
         setError("Failed to load analysis results.");
       } finally {
         setLoading(false);

@@ -45,7 +45,8 @@ export default function LoginPage() {
     try {
       await signInWithEmailAndPassword(auth, data.email, data.password);
       router.push("/");
-    } catch (err: any) {
+    } catch (err: unknown) {
+      console.error(err);
       setFirebaseError("Login failed");
     }
   };
@@ -144,7 +145,7 @@ export default function LoginPage() {
 
               {/* Register Link */}
               <div className="text-center">
-                <span className="text-gray-600">Don't have an account ? </span>
+                <span className="text-gray-600">Don&apos;t have an account ? </span>
                 <button
                   type="button"
                   className="text-orange-600 hover:text-orange-700 hover:underline font-medium"

@@ -157,7 +157,7 @@ export const CVUpload = () => {
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-slate-800 mb-3">Submit Your CV</h2>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            We'll analyze your CV and recommend the best universities and majors tailored to your skills and experience.
+            We&apos;ll analyze your CV and recommend the best universities and majors tailored to your skills and experience.
           </p>
         </div>
 
@@ -315,10 +315,10 @@ export const CVUpload = () => {
                         </div>
                         <div className="text-sm">
                           <label htmlFor="budget-unsure" className="font-medium text-gray-900 cursor-pointer">
-                            I'm not sure about my budget
+                            I&apos;m not sure about my budget
                           </label>
                           <p className="text-gray-500 text-xs mt-1">
-                            We'll show you a range of options from budget-friendly to premium universities
+                            We&apos;ll show you a range of options from budget-friendly to premium universities
                           </p>
                         </div>
                       </div>
