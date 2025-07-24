@@ -3,12 +3,13 @@
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, getIdToken } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Eye, EyeOff, Star } from "lucide-react";
 
 import { auth } from "@/lib/firebase";
+import Cookies from "js-cookie";
 import {
   Form,
   FormField,
@@ -43,7 +44,9 @@ export default function LoginPage() {
   const onSubmit = async (data: FormSchema) => {
     setFirebaseError(null);
     try {
-      await signInWithEmailAndPassword(auth, data.email, data.password);
+      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      const token = await getIdToken(userCredential.user);
+      Cookies.set("authToken", token, { expires: 1 }); 
       router.push("/");
     } catch (err: unknown) {
       console.error(err);
