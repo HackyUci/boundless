@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { jwtDecode } from "jwt-decode"
+import Cookies from "js-cookie"
 
 interface DecodedToken {
   exp: number;
@@ -26,68 +27,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<DecodedToken | null>(null)
   const router = useRouter()
 
-  const checkAuthStatus = () => {
-    try {
-      const cookies = document.cookie.split(';')
-      const authTokenCookie = cookies.find(cookie => 
-        cookie.trim().startsWith('authToken=')
-      )
-      
-      if (!authTokenCookie) {
-        setIsLoggedIn(false)
-        setUser(null)
-        return
-      }
-
-      const token = authTokenCookie.split('=')[1]
-      
-      if (!token) {
-        setIsLoggedIn(false)
-        setUser(null)
-        return
-      }
-
-      const decoded = jwtDecode<DecodedToken>(token)
-      
-      if (Date.now() >= decoded.exp * 1000) {
-        document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
-        setIsLoggedIn(false)
-        setUser(null)
-      } else {
-        setIsLoggedIn(true)
-        setUser(decoded)
-      }
-    } catch (error) {
-      console.error('Error checking auth status:', error)
-      document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
-      setIsLoggedIn(false)
-      setUser(null)
-    }
-  }
-
   useEffect(() => {
-    checkAuthStatus()
-    setIsLoading(false)
+    const checkAuthStatus = () => {
+      try {
+        const token = Cookies.get('authToken');
+        
+        if (!token) {
+          setIsLoggedIn(false);
+          setUser(null);
+          return;
+        }
 
-    const interval = setInterval(checkAuthStatus, 60000)
-    return () => clearInterval(interval)
-  }, [])
+        const decoded = jwtDecode<DecodedToken>(token);
+        
+        if (Date.now() >= decoded.exp * 1000) {
+          logout(); // Token is expired, so log out
+        } else {
+          setIsLoggedIn(true);
+          setUser(decoded);
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        logout(); // If any error occurs, treat as logged out
+      } finally {
+        if (isLoading) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    checkAuthStatus();
+    const interval = setInterval(checkAuthStatus, 60000);
+    return () => clearInterval(interval);
+  }, [isLoading]);
 
   const logout = () => {
-    document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
-    setIsLoggedIn(false)
-    setUser(null)
-    router.push('/')
-  }
+    Cookies.remove('authToken', { path: '/' });
+    setIsLoggedIn(false);
+    setUser(null);
+    router.push('/');
+  };
 
   const login = (token: string) => {
-    document.cookie = `authToken=${token}; path=/`
-    checkAuthStatus()
-  }
+    try {
+      const decoded = jwtDecode<DecodedToken>(token);
+      Cookies.set('authToken', token, { 
+        path: '/',
+        expires: new Date(decoded.exp * 1000) 
+      });
+      setIsLoggedIn(true);
+      setUser(decoded);
+    } catch (error) {
+      console.error("Failed to decode token on login:", error);
+    }
+  };
+
+  const value = { isLoggedIn, isLoading, user, logout, login };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, isLoading, user, logout, login }}>
-      {children}
+    <AuthContext.Provider value={value}>
+      {/* Don't render children until the initial auth check is done */}
+      {!isLoading && children}
     </AuthContext.Provider>
   )
 }
