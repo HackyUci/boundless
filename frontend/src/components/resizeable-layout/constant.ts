@@ -1,15 +1,15 @@
 export const FEATURE_BUTTONS = [
   {
     id: "comparison-details",
-    label: "Comparison Details",
+    label: "Target Country",
   },
   {
     id: "cv-analyzer",
-    label: "CV Analyzer",
+    label: "Magic Analyzer",
   },
   {
     id: "chatbot",
-    label: "Chatbot",
+    label: "Bonbon AI",
   },
 
 ] as const;
