@@ -61,7 +61,7 @@ export function Navbar({ className, ...props }: React.HTMLAttributes<HTMLElement
             ) : (
               <>
                 {!isLoggedIn && (
-                  <button className="bg-[linear-gradient(180deg,_#4479B2_0%,_#669DD9_100%)] backdrop-blur-sm shadow-[0px_2px_4px_0px_#00000040] px-3 py-2 rounded-md">
+                  <button className="bg-[linear-gradient(180deg,_#4479B2_0%,_#669DD9_100%)] backdrop-blur-sm shadow-[0px_2px_4px_0px_#00000040] px-3 py-2 rounded-md text-white font-bold">
                     <Link href="/register">Get started</Link>
                   </button>
                 )}
