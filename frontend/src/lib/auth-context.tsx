@@ -69,16 +69,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuthStatus()
     setIsLoading(false)
 
-    if (typeof window !== 'undefined' && !window.__authCheckInterval) {
-      window.__authCheckInterval = setInterval(checkAuthStatus, 60000)
-    }
-
-    return () => {
-      if (typeof window !== 'undefined' && window.__authCheckInterval) {
-        clearInterval(window.__authCheckInterval)
-        window.__authCheckInterval = null
-      }
-    }
+    const interval = setInterval(checkAuthStatus, 60000)
+    return () => clearInterval(interval)
   }, [])
 
   const logout = () => {
