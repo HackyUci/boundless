@@ -147,7 +147,7 @@ export default function LoginPage() {
                 <span className="text-gray-600">Don't have an account ? </span>
                 <button
                   type="button"
-                  className="text-orange-600 hover:text-orange-700 font-medium"
+                  className="text-orange-600 hover:text-orange-700 hover:underline font-medium"
                   onClick={() => router.push("/register")}
                 >
                   Register here
