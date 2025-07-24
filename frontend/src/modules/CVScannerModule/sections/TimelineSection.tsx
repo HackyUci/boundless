@@ -5,11 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { 
-  Calendar, 
   Clock, 
   Target, 
-  CheckCircle, 
-  AlertCircle, 
   Star, 
   MapPin, 
   ArrowLeft,
@@ -18,66 +15,17 @@ import {
   Award,
   Plane,
   DollarSign,
-  Users,
-  Circle,
   CheckCircle2
 } from 'lucide-react';
-import { collection, query, where, getDocs, orderBy, doc, updateDoc, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
+import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
+import { FavoriteUniversity, TimelinePhase } from '../interface';
 
-interface FavoriteUniversity {
-  id: string;
-  name: string;
-  country: string;
-  city: string;
-  programs: Program[];
-  netCost: number;
-  matchScore: number;
-  ranking?: number;
-  createdAt: any;
-}
-
-interface Program {
-  jurusan: string;
-  university: string;
-  country: string;
-  city: string;
-  annual_cost_idr?: number;
-  scholarship_amount_idr?: number;
-  net_cost_idr?: number;
-  fits_budget?: string;
-  match_score?: number;
-  reasoning?: string;
-  world_ranking?: number;
-  admission_requirements?: string;
-}
-
-interface TimelineStep {
-  id: string;
-  title: string;
-  description: string;
-  deadline: string;
-  universityName: string;
-  priority: 'high' | 'medium' | 'low';
-  completed: boolean;
-  type: 'application' | 'test' | 'document' | 'scholarship' | 'visa';
-  estimatedCost?: number;
-  phase: number;
-}
-
-interface TimelinePhase {
-  phase: number;
-  title: string;
-  description: string;
-  duration: string;
-  steps: TimelineStep[];
-}
 
 export const TimelineSection = () => {
-  const [user] = useAuthState(auth);
+  const { user } = useAuth(); 
   const [favoriteUniversities, setFavoriteUniversities] = useState<FavoriteUniversity[]>([]);
   const [timelinePhases, setTimelinePhases] = useState<TimelinePhase[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,7 +44,7 @@ export const TimelineSection = () => {
       const favoritesRef = collection(db, 'favorites');
       const q = query(
         favoritesRef, 
-        where('userId', '==', user?.uid)
+        where('userId', '==', user?.user_id) 
       );
       const querySnapshot = await getDocs(q);
       
@@ -109,7 +57,6 @@ export const TimelineSection = () => {
       const phases = generateTimelinePhases(favorites);
       setTimelinePhases(phases);
       
-      
       await loadProgressFromFirebase();
     } catch (error) {
       console.error('Error fetching favorites:', error);
@@ -121,7 +68,7 @@ export const TimelineSection = () => {
   const loadProgressFromFirebase = async () => {
     try {
       const progressRef = collection(db, 'timeline_progress');
-      const q = query(progressRef, where('userId', '==', user?.uid));
+      const q = query(progressRef, where('userId', '==', user?.user_id)); 
       const querySnapshot = await getDocs(q);
       
       const completedSet = new Set<string>();
@@ -169,6 +116,7 @@ export const TimelineSection = () => {
       }
     ];
 
+    
     const analysisData = localStorage.getItem('cvAnalysisResult');
     if (!analysisData) {
       console.log('No analysis data found in localStorage');
@@ -258,16 +206,14 @@ export const TimelineSection = () => {
         });
       }
 
-      
       universities.forEach((university) => {
-        
         const applicationDeadline = new Date();
         applicationDeadline.setMonth(applicationDeadline.getMonth() + 4); 
 
         phases[1].steps.push({
           id: `app-${university.id}`,
           title: `Submit Application to ${university.name}`,
-          description: `Complete and submit university application`,
+          description: `Complete and submit application for ${university.jurusan}`, 
           deadline: applicationDeadline.toISOString().split('T')[0],
           universityName: university.name,
           priority: 'high',
@@ -277,7 +223,6 @@ export const TimelineSection = () => {
           phase: 2
         });
 
-        
         const decisionDeadline = new Date();
         decisionDeadline.setMonth(decisionDeadline.getMonth() + 6); 
 
@@ -293,7 +238,6 @@ export const TimelineSection = () => {
           phase: 3
         });
 
-        
         const visaDeadline = new Date();
         visaDeadline.setMonth(visaDeadline.getMonth() + 8); 
 
@@ -310,7 +254,6 @@ export const TimelineSection = () => {
           phase: 4
         });
       });
-
     } catch (error) {
       console.error('Error parsing analysis data:', error);
     }
@@ -322,24 +265,19 @@ export const TimelineSection = () => {
     try {
       const newCompletedSteps = new Set(completedSteps);
       const isCompleting = !newCompletedSteps.has(stepId);
-      
       if (isCompleting) {
         newCompletedSteps.add(stepId);
       } else {
         newCompletedSteps.delete(stepId);
       }
-      
       setCompletedSteps(newCompletedSteps);
-      
-      
       await addDoc(collection(db, 'timeline_progress'), {
-        userId: user?.uid,
+        userId: user?.user_id, 
         stepId: stepId,
         completed: isCompleting,
         completedAt: new Date(),
         updatedAt: new Date()
       });
-      
       
       setTimelinePhases(prev => 
         prev.map(phase => ({
@@ -474,30 +412,6 @@ export const TimelineSection = () => {
   return (
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center">
-            <Button 
-              variant="ghost" 
-              onClick={() => router.back()}
-              className="mr-4"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold">Application Timeline</h1>
-              <p className="text-muted-foreground">{favoriteUniversities.length} universities • {timelinePhases.flatMap(p => p.steps).length} total steps</p>
-            </div>
-          </div>
-          
-          <div className="text-right">
-            <p className="text-sm text-muted-foreground">Overall Progress</p>
-            <p className="text-2xl font-bold">{Math.round(totalProgress())}%</p>
-          </div>
-        </div>
-
-        {/* Progress Overview */}
         <Card className="mb-8">
           <CardContent className="p-6">
             <div className="mb-6">
@@ -529,7 +443,6 @@ export const TimelineSection = () => {
           </CardContent>
         </Card>
 
-        {/* Horizontal Timeline */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold">Application Phases</h2>
@@ -550,7 +463,6 @@ export const TimelineSection = () => {
           </div>
 
           <div className="relative">
-            {/* Timeline Line */}
             <div className="absolute top-16 left-0 right-0 h-0.5 bg-border">
               <div 
                 className="h-full bg-primary transition-all duration-500"
@@ -558,7 +470,6 @@ export const TimelineSection = () => {
               />
             </div>
 
-            {/* Timeline Phases */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {timelinePhases.map((phase, index) => (
                 <Card key={phase.phase} className={`transition-all ${index === currentPhase ? 'ring-1 ring-primary' : ''}`}>
@@ -633,7 +544,6 @@ export const TimelineSection = () => {
           </div>
         </div>
 
-        {/* Detailed Steps List */}
         <Card>
           <CardHeader>
             <CardTitle>All Steps</CardTitle>
@@ -711,7 +621,6 @@ export const TimelineSection = () => {
           </CardContent>
         </Card>
 
-        {/* Favorite Universities Summary */}
         <Card className="mt-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -731,6 +640,7 @@ export const TimelineSection = () => {
                     <MapPin className="w-3 h-3" />
                     {university.city}, {university.country}
                   </p>
+                  <p className="text-sm text-blue-600 mb-2">{university.jurusan}</p>
                   <div className="flex justify-between items-center text-sm">
                     <span className="font-medium">
                       {formatCurrency(university.netCost)}/year
@@ -740,7 +650,7 @@ export const TimelineSection = () => {
                     )}
                   </div>
                   <div className="mt-2 text-xs text-muted-foreground">
-                    {university.programs.length} program{university.programs.length > 1 ? 's' : ''} available
+                    Program: {university.jurusan}
                   </div>
                 </Card>
               ))}
