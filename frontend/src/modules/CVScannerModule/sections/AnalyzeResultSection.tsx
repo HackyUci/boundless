@@ -21,7 +21,6 @@ import {
   Calendar,
   Target,
   TrendingUp,
-  Clock,
   Zap
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
