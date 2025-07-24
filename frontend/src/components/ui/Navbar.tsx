@@ -1,4 +1,3 @@
-// Your navbar component file
 "use client"
 
 import * as React from "react"
