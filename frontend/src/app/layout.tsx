@@ -11,6 +11,7 @@ const fontSans = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: "Boundless - Breaking Barriers to Global Education",
+  description: "Breaking Barriers to Global Education",
 };
 
 export default function RootLayout({
