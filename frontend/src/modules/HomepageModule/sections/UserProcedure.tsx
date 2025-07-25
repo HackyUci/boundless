@@ -8,25 +8,25 @@ const featureSteps = [
     title: "Scholarship & Funding Matcher",
     description: "Upload your CV, and let GlobalMatch AI find the best countries, programs, and opportunities that fit you.",
     bgColor: "bg-blue-500",
-    illustration: "/GENERATE_QR_ILLUST.png"
+    illustration: "/SCHOLARSHIP_MATCHER.jpg"
   },
   {
     title: "Dreamtracker",
     description: "Step-by-Step Preparation Roadmap, helps you set, track, and complete every milestone,  from start to finish.",
     bgColor: "bg-green-500",
-    illustration: "/SCAN_PAY_ILLUST.png"
+    illustration: "/SCHOLARSHIP_HUB.jpg"
   },
   {
     title: "Scholarship Hub",
     description: "Say goodbye to 50 open tabs. We bring together scholarships just for you. Filter, save, and apply without the overwhelm.",
     bgColor: "bg-purple-500",
-    illustration: "/SETTLEMENT_ILLUST.png"
+    illustration: "/SCHOLARSHIP_HUB.jpg"
   },
   {
     title: "Bonbon AI",
     description: "From visas to universities, Bonbon is your 24/7 guide to the study abroad universe, tailored to your goals.",
     bgColor: "bg-orange-500",
-    illustration: "/CASH_OUT_ILLUST.png"
+    illustration: "/SCHOLARSHIP_MATCHER.jpg"
   }
 ];
 
@@ -87,14 +87,14 @@ export const ProcedureSection = () => {
           </div>
 
           {/* Illustration */}
-          <div className="flex items-center justify-center min-h-[300px] lg:min-h-[450px] bg-gray-50 rounded-3xl p-8 backdrop-blur-md shadow-lg">
+          <div className="flex items-center justify-center bg-gray-50 rounded-2xl p-4 backdrop-blur-md shadow-lg">
             <Image
               key={activeStep}
               src={featureSteps[activeStep].illustration}
               alt={featureSteps[activeStep].title}
-              width={400}
-              height={400}
-              className="w-full max-w-md rounded-2xl transition-opacity duration-500 ease-in-out"
+              width={520}
+              height={520}
+              className="w-auto h-auto max-w-md rounded-2xl transition-opacity duration-500 ease-in-out"
             />
           </div>
         </div>
