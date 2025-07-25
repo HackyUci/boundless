@@ -130,41 +130,41 @@ export const AnalyzeResultSection = () => {
   };
 
   const saveToFavorites = async (option: UniversityOption) => {
-    if (!user) {
-      alert('Please login to save favorites');
-      return;
-    }
+  if (!user) {
+    alert('Please login to save favorites');
+    return;
+  }
 
-    try {
-      await addDoc(collection(db, 'favorites'), {
-        userId: user.user_id,
-        universityId: option.id,
-        name: option.name,
-        country: option.country,
-        city: option.city,
-        jurusan: option.program.jurusan,
-        annual_cost_idr: option.program.annual_cost_idr,
-        scholarship_amount_idr: option.program.scholarship_amount_idr,
-        net_cost_idr: option.program.net_cost_idr,
-        fits_budget: option.program.fits_budget,
-        match_score: option.program.match_score,
-        reasoning: option.program.reasoning,
-        world_ranking: option.program.world_ranking,
-        admission_requirements: option.program.admission_requirements,
-        totalCost: option.totalCost,
-        scholarshipAmount: option.scholarshipAmount,
-        netCost: option.netCost,
-        withinBudget: option.withinBudget,
-        matchScore: option.matchScore,
-        ranking: option.ranking,
-        createdAt: new Date()
-      });
-      console.log('Successfully saved to favorites');
-    } catch (error) {
-      console.error('Error saving to favorites:', error);
-      throw error;
-    }
-  };
+  try {
+    await addDoc(collection(db, 'favorites'), {
+      userId: user.user_id,
+      universityId: option.id,
+      name: option.name || '',
+      country: option.country || '',
+      city: option.city || '',
+      jurusan: option.program?.jurusan || '',
+      annual_cost_idr: option.program?.annual_cost_idr || 0,
+      scholarship_amount_idr: option.program?.scholarship_amount_idr || 0,
+      net_cost_idr: option.program?.net_cost_idr || 0,
+      fits_budget: option.program?.fits_budget || 'unknown',
+      match_score: option.program?.match_score || 0,
+      reasoning: option.program?.reasoning || '',
+      world_ranking: option.program?.world_ranking || null,
+      admission_requirements: option.program?.admission_requirements || null, 
+      totalCost: option.totalCost || 0,
+      scholarshipAmount: option.scholarshipAmount || 0,
+      netCost: option.netCost || 0,
+      withinBudget: option.withinBudget ?? false,
+      matchScore: option.matchScore || 0,
+      ranking: option.ranking || null,
+      createdAt: new Date()
+    });
+    console.log('Successfully saved to favorites');
+  } catch (error) {
+    console.error('Error saving to favorites:', error);
+    throw error;
+  }
+};
 
   const removeFromFavorites = async (universityId: string) => {
     if (!user) return;
