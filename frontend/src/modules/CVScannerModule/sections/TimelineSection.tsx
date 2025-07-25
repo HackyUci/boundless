@@ -17,12 +17,11 @@ import {
   DollarSign,
   CheckCircle2
 } from 'lucide-react';
-import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { FavoriteUniversity, TimelinePhase } from '../interface';
-
 
 export const TimelineSection = () => {
   const { user } = useAuth(); 
@@ -31,6 +30,7 @@ export const TimelineSection = () => {
   const [loading, setLoading] = useState(true);
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
   const [currentPhase, setCurrentPhase] = useState(0);
+  const [saving, setSaving] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -38,6 +38,193 @@ export const TimelineSection = () => {
       fetchFavoriteUniversities();
     }
   }, [user]);
+
+  const cleanFirebaseData = (obj: any): any => {
+    if (obj === undefined || obj === null) return null;
+    if (typeof obj === 'string' || typeof obj === 'number' || typeof obj === 'boolean') return obj;
+    if (obj instanceof Date) return obj;
+    if (Array.isArray(obj)) return obj.map(cleanFirebaseData).filter(item => item !== null);
+    
+    if (typeof obj === 'object') {
+      const cleaned: any = {};
+      Object.keys(obj).forEach(key => {
+        const value = cleanFirebaseData(obj[key]);
+        if (value !== null && value !== undefined) {
+          cleaned[key] = value;
+        }
+      });
+      return cleaned;
+    }
+    
+    return null;
+  };
+
+  const saveAllDataToFirebase = async (
+    universities: FavoriteUniversity[], 
+    phases: TimelinePhase[], 
+    completedStepsSet: Set<string>, 
+    currentPhaseIndex: number
+  ) => {
+    if (!user?.user_id) return false;
+    
+    setSaving(true);
+    try {
+      const userTimelineRef = doc(db, 'user_timeline_data', user.user_id);
+      const allSteps = phases.flatMap(phase => phase.steps);
+      const completedCount = Array.from(completedStepsSet).length;
+      const totalProgress = allSteps.length > 0 ? (completedCount / allSteps.length) * 100 : 0;
+      
+      const pendingSteps = allSteps.filter(step => 
+        !completedStepsSet.has(step.id) && new Date(step.deadline) >= new Date()
+      ).length;
+      
+      const overdueSteps = allSteps.filter(step => 
+        !completedStepsSet.has(step.id) && new Date(step.deadline) < new Date()
+      ).length;
+
+      const analysisData = localStorage.getItem('cvAnalysisResult');
+      let parsedAnalysisData = null;
+      try {
+        parsedAnalysisData = analysisData ? JSON.parse(analysisData) : null;
+      } catch (e) {
+        console.error('Error parsing analysis data:', e);
+      }
+
+      const timelineData = {
+        userId: user.user_id,
+        completedSteps: Array.from(completedStepsSet),
+        currentPhase: currentPhaseIndex,
+        favoriteUniversities: universities.map(uni => cleanFirebaseData({
+          id: uni.id || '',
+          name: uni.name || '',
+          country: uni.country || '',
+          city: uni.city || '',
+          jurusan: uni.jurusan || '',
+          annual_cost_idr: uni.annual_cost_idr || 0,
+          scholarship_amount_idr: uni.scholarship_amount_idr || 0,
+          net_cost_idr: uni.net_cost_idr || 0,
+          fits_budget: uni.fits_budget || 'unknown',
+          match_score: uni.match_score || 0,
+          reasoning: uni.reasoning || '',
+          world_ranking: uni.world_ranking || null,
+          admission_requirements: uni.admission_requirements || null,
+          netCost: uni.netCost || 0,
+          matchScore: uni.matchScore || 0,
+          ranking: uni.ranking || null,
+          createdAt: uni.createdAt || new Date()
+        })),
+        timelinePhases: phases.map(phase => cleanFirebaseData({
+          phase: phase.phase,
+          title: phase.title || '',
+          description: phase.description || '',
+          duration: phase.duration || '',
+          steps: phase.steps.map(step => cleanFirebaseData({
+            id: step.id || '',
+            title: step.title || '',
+            description: step.description || '',
+            deadline: step.deadline || '',
+            universityName: step.universityName || '',
+            priority: step.priority || 'medium',
+            completed: completedStepsSet.has(step.id),
+            type: step.type || 'document',
+            estimatedCost: step.estimatedCost || 0,
+            phase: step.phase || 1
+          }))
+        })),
+        analysisData: parsedAnalysisData ? cleanFirebaseData(parsedAnalysisData) : null,
+        stats: {
+          totalSteps: allSteps.length,
+          completedCount: completedCount,
+          pendingCount: pendingSteps,
+          overdueCount: overdueSteps,
+          totalProgress: Math.round(totalProgress),
+          universitiesCount: universities.length,
+          phasesCount: phases.length
+        },
+        metadata: {
+          lastUpdated: new Date(),
+          version: Date.now(),
+          dataSource: 'timeline_section',
+          userAgent: navigator.userAgent,
+          timestamp: new Date().toISOString()
+        },
+        preferences: {
+          defaultView: 'phases',
+          autoSave: true,
+          notifications: true,
+          theme: 'default'
+        }
+      };
+
+      const cleanedData = cleanFirebaseData(timelineData);
+      await setDoc(userTimelineRef, cleanedData, { merge: true });
+      
+      return true;
+    } catch (error) {
+      console.error('Error saving timeline data:', error);
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const loadAllDataFromFirebase = async (generatedPhases: TimelinePhase[]) => {
+    if (!user?.user_id) return;
+    
+    try {
+      const userTimelineRef = doc(db, 'user_timeline_data', user.user_id);
+      const docSnap = await getDoc(userTimelineRef);
+      
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        
+        const completedSet = new Set<string>(data.completedSteps || []);
+        setCompletedSteps(completedSet);
+        setCurrentPhase(data.currentPhase || 0);
+        
+        if (data.favoriteUniversities && data.favoriteUniversities.length > 0) {
+          setFavoriteUniversities(data.favoriteUniversities);
+        }
+        
+        if (data.timelinePhases && data.timelinePhases.length > 0) {
+          const savedPhases = data.timelinePhases.map((savedPhase: any) => ({
+            ...savedPhase,
+            steps: savedPhase.steps.map((step: any) => ({
+              ...step,
+              completed: completedSet.has(step.id)
+            }))
+          }));
+          setTimelinePhases(savedPhases);
+        } else {
+          const phasesWithCompletion = generatedPhases.map(phase => ({
+            ...phase,
+            steps: phase.steps.map(step => ({
+              ...step,
+              completed: completedSet.has(step.id)
+            }))
+          }));
+          setTimelinePhases(phasesWithCompletion);
+          await saveAllDataToFirebase(favoriteUniversities, phasesWithCompletion, completedSet, 0);
+        }
+        
+        if (data.analysisData) {
+          localStorage.setItem('cvAnalysisResult', JSON.stringify(data.analysisData));
+        }
+      } else {
+        const phasesWithCompletion = generatedPhases.map(phase => ({
+          ...phase,
+          steps: phase.steps.map(step => ({
+            ...step,
+            completed: false
+          }))
+        }));
+        setTimelinePhases(phasesWithCompletion);
+        await saveAllDataToFirebase(favoriteUniversities, phasesWithCompletion, new Set(), 0);
+      }
+    } catch (error) {
+      console.error('Error loading timeline from Firebase:', error);
+    }
+  };
 
   const fetchFavoriteUniversities = async () => {
     try {
@@ -50,37 +237,25 @@ export const TimelineSection = () => {
       
       const favorites: FavoriteUniversity[] = [];
       querySnapshot.forEach((doc) => {
-        favorites.push({ id: doc.id, ...doc.data() } as FavoriteUniversity);
+        const data = doc.data();
+        favorites.push({ 
+          id: doc.id, 
+          ...data,
+          admission_requirements: data.admission_requirements || null,
+          world_ranking: data.world_ranking || null,
+          ranking: data.ranking || null
+        } as FavoriteUniversity);
       });
       
       setFavoriteUniversities(favorites);
       const phases = generateTimelinePhases(favorites);
       setTimelinePhases(phases);
       
-      await loadProgressFromFirebase();
+      await loadAllDataFromFirebase(phases);
     } catch (error) {
       console.error('Error fetching favorites:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadProgressFromFirebase = async () => {
-    try {
-      const progressRef = collection(db, 'timeline_progress');
-      const q = query(progressRef, where('userId', '==', user?.user_id)); 
-      const querySnapshot = await getDocs(q);
-      
-      const completedSet = new Set<string>();
-      querySnapshot.forEach((doc) => {
-        if (doc.data().completed) {
-          completedSet.add(doc.data().stepId);
-        }
-      });
-      
-      setCompletedSteps(completedSet);
-    } catch (error) {
-      console.error('Error loading progress:', error);
     }
   };
 
@@ -116,7 +291,6 @@ export const TimelineSection = () => {
       }
     ];
 
-    
     const analysisData = localStorage.getItem('cvAnalysisResult');
     if (!analysisData) {
       console.log('No analysis data found in localStorage');
@@ -265,51 +439,63 @@ export const TimelineSection = () => {
     try {
       const newCompletedSteps = new Set(completedSteps);
       const isCompleting = !newCompletedSteps.has(stepId);
+      
       if (isCompleting) {
         newCompletedSteps.add(stepId);
       } else {
         newCompletedSteps.delete(stepId);
       }
-      setCompletedSteps(newCompletedSteps);
-      await addDoc(collection(db, 'timeline_progress'), {
-        userId: user?.user_id, 
-        stepId: stepId,
-        completed: isCompleting,
-        completedAt: new Date(),
-        updatedAt: new Date()
-      });
       
+      setCompletedSteps(newCompletedSteps);
+      
+      const updatedPhases = timelinePhases.map(phase => ({
+        ...phase,
+        steps: phase.steps.map(step => 
+          step.id === stepId 
+            ? { ...step, completed: isCompleting }
+            : step
+        )
+      }));
+      
+      setTimelinePhases(updatedPhases);
+      
+      const newCurrentPhase = updateCurrentPhase(updatedPhases, newCompletedSteps);
+      
+      await saveAllDataToFirebase(favoriteUniversities, updatedPhases, newCompletedSteps, newCurrentPhase);
+      
+    } catch (error) {
+      console.error('Error updating step completion:', error);
+      
+      setCompletedSteps(completedSteps);
       setTimelinePhases(prev => 
         prev.map(phase => ({
           ...phase,
           steps: phase.steps.map(step => 
             step.id === stepId 
-              ? { ...step, completed: isCompleting }
+              ? { ...step, completed: !completedSteps.has(stepId) }
               : step
           )
         }))
       );
-
-      updateCurrentPhase();
-    } catch (error) {
-      console.error('Error updating step completion:', error);
     }
   };
 
-  const updateCurrentPhase = () => {
-    for (let i = 0; i < timelinePhases.length; i++) {
-      const phase = timelinePhases[i];
-      const completedInPhase = phase.steps.filter(step => completedSteps.has(step.id)).length;
+  const updateCurrentPhase = (phases: TimelinePhase[], completedStepsSet: Set<string>) => {
+    for (let i = 0; i < phases.length; i++) {
+      const phase = phases[i];
+      const completedInPhase = phase.steps.filter(step => completedStepsSet.has(step.id)).length;
       const totalInPhase = phase.steps.length;
       
       if (completedInPhase < totalInPhase) {
         setCurrentPhase(i);
-        break;
+        return i;
       }
-      if (i === timelinePhases.length - 1) {
+      if (i === phases.length - 1) {
         setCurrentPhase(i);
+        return i;
       }
     }
+    return 0;
   };
 
   const getPriorityBadgeVariant = (priority: string) => {
@@ -412,6 +598,29 @@ export const TimelineSection = () => {
   return (
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center">
+            <Button 
+              variant="ghost" 
+              onClick={() => router.back()}
+              className="mr-4"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Application Timeline</h1>
+              <p className="text-muted-foreground">Track your university application progress</p>
+            </div>
+          </div>
+          {saving && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+              Saving...
+            </div>
+          )}
+        </div>
+
         <Card className="mb-8">
           <CardContent className="p-6">
             <div className="mb-6">
