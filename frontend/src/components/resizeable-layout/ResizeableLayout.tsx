@@ -67,7 +67,7 @@ export default function ResizableLayout() {
                     onClick={() => handleButtonClick(button.id)}
                     className={`px-3 py-2 text-sm cursor-pointer transition-colors duration-200 rounded-md ${
                       activeFeature === button.id
-                        ? "bg-muted text-muted-foreground border-gray-400 border-1 shadow-[4px_0_0_rgba(0,0,0,0.1)]"
+                        ? "bg-[#FFF3E6] text-muted-foreground border-gray-400 border-1 shadow-[4px_0_0_rgba(0,0,0,0.1)]"
                         : "hover:bg-muted text-muted-foreground hover:text-foreground"
                     }`}
                   >
