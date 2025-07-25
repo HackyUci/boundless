@@ -95,7 +95,7 @@ const AnimatedTooltip = () => {
             side="top" 
             className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg max-w-xs"
           >
-            <p>Hello, I'm Bonbon. I'm here to help</p>
+            <p>Hello, I&apos;m Bonbon. I&apos;m here to help</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
