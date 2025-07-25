@@ -71,7 +71,7 @@ export default function ResizableLayout() {
                       className={cn(
                         "flex items-center justify-center px-3 py-2 text-sm cursor-pointer transition-colors duration-200 rounded-md",
                         {
-                          "bg-muted text-muted-foreground border-gray-400 border-1 shadow-[4px_0_0_rgba(0,0,0,0.1)]": activeFeature === button.id,
+                          "bg-[#FFF3E6] text-muted-foreground border-gray-400 border-1 shadow-[4px_0_0_rgba(0,0,0,0.1)]": activeFeature === button.id,
                           "hover:bg-muted text-muted-foreground hover:text-foreground": activeFeature !== button.id,
                         }
                       )}
