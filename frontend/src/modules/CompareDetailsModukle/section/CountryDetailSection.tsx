@@ -186,15 +186,6 @@ export const CompareDetailSection: React.FC<CompareDetailSectionProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Helper text when fields are empty */}
-      {!originCountry && !destinationCountry && (
-        <div className="text-center p-6 bg-muted/50 rounded-lg border-2 border-dashed border-muted-foreground/25">
-          <p className="text-sm text-muted-foreground">
-            Click a country on the map to choose where you are from, then click again to select where you want to go
-          </p>
-        </div>
-      )}
-
       {/* Country Selection Row */}
       <div className="grid grid-cols-5 gap-4 items-end">
         <div className="col-span-2 space-y-3">
@@ -223,7 +214,14 @@ export const CompareDetailSection: React.FC<CompareDetailSectionProps> = ({
           />
         </div>
       </div>
-
+      {/* Helper text when fields are empty */}
+      {!originCountry && !destinationCountry && (
+        <div className="text-center p-6 bg-muted/50 rounded-lg border-2 border-dashed border-muted-foreground/25">
+          <p className="text-sm text-muted-foreground">
+            Click a country on the map to choose where you are from, then click again to select where you want to go
+          </p>
+        </div>
+      )}
       {/* Comparison Results */}
       {comparison && (
         <Card className=" dark:from-orange-950/20 dark:to-amber-950/20">
