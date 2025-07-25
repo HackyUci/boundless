@@ -40,7 +40,7 @@ export function Navbar({ className, ...props }: React.HTMLAttributes<HTMLElement
               alt="Boundless Logo"
               width={150}
               height={40}
-              className="h-8 w-auto"
+              className="h-6 w-auto"
             />
           </Link>
         </div>
