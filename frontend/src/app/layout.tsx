@@ -10,8 +10,12 @@ const fontSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Boundless - Breaking Barriers to Global Education",
+  title: "Boundless",
   description: "Breaking Barriers to Global Education",
+  icons: {
+    icon: '/favicon.ico', 
+    shortcut: '/logo.png', 
+  },
 };
 
 export default function RootLayout({
