@@ -4,15 +4,31 @@ import Image from 'next/image';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const AnimatedTooltip = () => {
-  const [position, setPosition] = useState({ x: 100, y: 100 });
+  const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [isActive, setIsActive] = useState(false);
+  const [isBouncing, setIsBouncing] = useState(true);
   const dragStart = useRef({ x: 0, y: 0 });
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const bounceTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  useEffect(() => {
+    const updatePosition = () => {
+      setPosition({
+        x: window.innerWidth - 80,
+        y: window.innerHeight - 80
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    return () => window.removeEventListener('resize', updatePosition);
+  }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
     setIsActive(true);
+    setIsBouncing(false);
     dragStart.current = {
       x: e.clientX - position.x,
       y: e.clientY - position.y
@@ -31,7 +47,37 @@ const AnimatedTooltip = () => {
 
   const handleMouseUp = () => {
     setIsDragging(false);
-    setTimeout(() => setIsActive(false), 300); // Delay untuk transisi animasi
+    setTimeout(() => {
+      setIsActive(false);
+      if (bounceTimeoutRef.current) {
+        clearTimeout(bounceTimeoutRef.current);
+      }
+      bounceTimeoutRef.current = setTimeout(() => {
+        setIsBouncing(true);
+      }, 2000);
+    }, 300);
+  };
+
+  const handleMouseEnter = () => {
+    if (!isDragging) {
+      setIsActive(true);
+      setIsBouncing(false);
+      if (bounceTimeoutRef.current) {
+        clearTimeout(bounceTimeoutRef.current);
+      }
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!isDragging) {
+      setIsActive(false);
+      if (bounceTimeoutRef.current) {
+        clearTimeout(bounceTimeoutRef.current);
+      }
+      bounceTimeoutRef.current = setTimeout(() => {
+        setIsBouncing(true);
+      }, 2000);
+    }
   };
 
   useEffect(() => {
@@ -44,6 +90,19 @@ const AnimatedTooltip = () => {
       };
     }
   }, [isDragging]);
+
+  useEffect(() => {
+    const startBouncing = setTimeout(() => {
+      setIsBouncing(true);
+    }, 3000);
+
+    return () => {
+      clearTimeout(startBouncing);
+      if (bounceTimeoutRef.current) {
+        clearTimeout(bounceTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div 
@@ -62,10 +121,16 @@ const AnimatedTooltip = () => {
                 transition: isDragging ? 'none' : 'transform 0.2s ease'
               }}
               onMouseDown={handleMouseDown}
-              onMouseEnter={() => !isDragging && setIsActive(true)}
-              onMouseLeave={() => !isDragging && setIsActive(false)}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
             >
-              <div className="relative w-16 h-16">
+              <div 
+                className={`relative w-16 h-16 ${
+                  isBouncing && !isDragging && !isActive 
+                    ? 'animate-bounce' 
+                    : ''
+                }`}
+              >
                 <Image
                   src="/BONBON_HIHI.svg"
                   alt="Bonbon normal state"
