@@ -216,9 +216,9 @@ export const AnalyzeResultSection = () => {
   };
 
   const getMatchColor = (score: number) => {
-    if (score >= 8) return 'bg-green-500';
-    if (score >= 6) return 'bg-yellow-500';
-    return 'bg-red-500';
+    if (score >= 8) return 'bg-gradient-to-br from-white to-green-50 border-green-200';
+    if (score >= 6) return 'bg-gradient-to-br from-white to-yellow-50 border-yellow-200';
+    return 'bg-gradient-to-br from-white to-red-50 border-red-200';
   };
 
   const navigateToTimeline = () => {
@@ -290,7 +290,6 @@ export const AnalyzeResultSection = () => {
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="font-semibold text-sm">{option.name}</h3>
                     <div className="flex items-center gap-1">
-                      <div className={`w-2 h-2 rounded-full ${getMatchColor(option.matchScore)}`}></div>
                       <span className="text-xs text-muted-foreground">{option.matchScore}/10</span>
                     </div>
                   </div>
@@ -367,20 +366,19 @@ export const AnalyzeResultSection = () => {
 
               <TabsContent value="overview" className="space-y-6">
                 <div className="grid md:grid-cols-3 gap-4">
-                  <Card>
+                  <Card className={getMatchColor(selectedOption.matchScore)}>
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Match Score</p>
                           <p className="text-2xl font-bold">{selectedOption.matchScore}/10</p>
                         </div>
-                        <div className={`w-3 h-3 rounded-full ${getMatchColor(selectedOption.matchScore)}`}></div>
                       </div>
                       <Progress value={selectedOption.matchScore * 10} className="mt-3" />
                     </CardContent>
                   </Card>
 
-                  <Card>
+                  <Card className={selectedOption.withinBudget ? 'bg-gradient-to-br from-white to-green-50 border-green-200' : 'bg-gradient-to-br from-white to-red-50 border-red-200'}>
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div>
@@ -388,13 +386,12 @@ export const AnalyzeResultSection = () => {
                           <p className="text-lg font-bold">
                             {selectedOption.withinBudget ? 'Affordable' : 'Scholarship Needed'}
                           </p>
-                        </div>
-                        <CheckCircle className={`w-6 h-6 ${selectedOption.withinBudget ? 'text-green-500' : 'text-muted-foreground'}`} />
+                        </div>                        <CheckCircle className={`w-6 h-6 ${selectedOption.withinBudget ? 'text-green-500' : 'text-muted-foreground'}`} />
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card>
+                  <Card className="bg-gradient-to-br from-white to-blue-50 border-blue-200">
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div>
