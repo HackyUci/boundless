@@ -150,7 +150,7 @@ export const TimelineSection = () => {
             stepType = 'visa';
           }
 
-          let deadlineDate = new Date();
+          const deadlineDate = new Date();
           if (step.deadline) {
             if (step.deadline.toLowerCase().includes('month')) {
               const months = parseInt(step.deadline.match(/\d+/)?.[0] || '3');
