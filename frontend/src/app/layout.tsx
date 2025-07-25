@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { AuthProvider } from "@/lib/auth-context";
+import AnimatedTooltip from "@/components/Bonbon";
 
 const fontSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -31,6 +32,7 @@ export default function RootLayout({
         <AuthProvider>
           <Navbar className="sticky top-0 z-50" />
           {children}
+          <AnimatedTooltip />
         </AuthProvider>
       </body>
     </html>
