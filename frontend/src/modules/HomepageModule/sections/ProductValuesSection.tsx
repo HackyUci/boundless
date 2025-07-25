@@ -20,7 +20,7 @@ export const ProductValuesSection = () => {
           Everything You Need, All in One Place
         </p>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="w-auto flex flex-row gap-8 justify-center">
           {FEATURES.map((feature, index) => (
             <div key={index} className="flex flex-col items-center">
               <div className="relative">

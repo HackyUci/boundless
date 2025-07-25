@@ -7,11 +7,11 @@ export const FEATURES = [
     {
       title: "Step-by-Step Preparation Roadmap", 
       description: "Know exactly what to do, from research to money management.",
-      image: "/card.png"
+      image: "/card2.png"
     },
     {
       title: "Cultural & Religious Fit Finder",
       description: "Discover universities that support your values, needs, and lifestyle.",
-      image: "/card.png"
+      image: "/card3.png"
     }
   ];
