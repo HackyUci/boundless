@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Send, Bot, User, Loader2, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import Image from "next/image";
 
 interface Message {
   id: string;
@@ -134,8 +135,16 @@ export const ChatbotSection: React.FC = () => {
         <CardContent className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto space-y-4 mb-4 min-h-0">
             {messages.length === 0 && (
-              <div className="text-center text-muted-foreground py-8">
-                <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <div className="text-center text-muted-foreground pb-8 pt-5">
+                <div className="flex justify-center">
+                  <Image
+                    src="/BONBON_HIHI.svg"
+                    alt="Bot icon"
+                    width={88}
+                    height={88}
+                    className="animate-bounce"
+                  />{" "}
+                </div>
                 <p className="mb-4">
                   Start a conversation about your study abroad plans!
                 </p>
