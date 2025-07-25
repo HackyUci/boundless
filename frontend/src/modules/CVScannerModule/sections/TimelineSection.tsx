@@ -399,7 +399,7 @@ export const TimelineSection = () => {
               <Star className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">No Favorite Universities</h3>
               <p className="text-muted-foreground mb-6">Add universities to favorites to create your personalized timeline</p>
-              <Button onClick={() => router.push('/analyze-result')}>
+              <Button onClick={() => router.push('/result')}>
                 Browse Universities
               </Button>
             </CardContent>

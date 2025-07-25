@@ -17,7 +17,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { joinCityData } from "@/lib/cost-data-parser";
 import { Label } from "@radix-ui/react-label";
 
@@ -77,12 +76,8 @@ function CountryComboBox({
                   value={country}
                   disabled={disabledCountries?.includes(country)}
                   onSelect={(currentValue) => {
-                    try {
-                      setValue(currentValue);
-                      setOpen(false);
-                    } catch (error) {
-                      console.error("Error in onSelect:", error);
-                    }
+                    setValue(currentValue);
+                    setOpen(false);
                   }}
                 >
                   <CheckIcon
@@ -106,8 +101,7 @@ export const CompareDetailSection: React.FC<CompareDetailSectionProps> = ({
   selectedCity,
 }) => {
   const [originCountry, setOriginCountry] = React.useState<string>("");
-  const [destinationCountry, setDestinationCountry] =
-    React.useState<string>("");
+  const [destinationCountry, setDestinationCountry] = React.useState<string>("");
   const [clickCount, setClickCount] = React.useState(0);
 
   const joinedData = React.useMemo(() => joinCityData(), []);
@@ -128,8 +122,7 @@ export const CompareDetailSection: React.FC<CompareDetailSectionProps> = ({
     );
     if (!originData?.col_index || !destData?.col_index) return null;
     const costDiff =
-      ((destData.col_index - originData.col_index) / originData.col_index) *
-      100;
+      ((destData.col_index - originData.col_index) / originData.col_index) * 100;
     const rentDiff =
       originData.rent_index && destData.rent_index
         ? ((destData.rent_index - originData.rent_index) /
@@ -193,21 +186,12 @@ export const CompareDetailSection: React.FC<CompareDetailSectionProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Helper text when fields are empty */}
-      {!originCountry && !destinationCountry && (
-        <div className="text-center p-6 bg-muted/50 rounded-lg border-2 border-dashed border-muted-foreground/25">
-          <p className="text-sm text-muted-foreground">
-            Click a country on the map to choose where you are from, then click again to select where you want to go
-          </p>
-        </div>
-      )}
-
       {/* Country Selection Row */}
-      <div className="grid grid-cols-5 items-end">
+      <div className="grid grid-cols-5 gap-4 items-end">
         <div className="col-span-2 space-y-3">
           <Label className="text-sm font-semibold">Where are you from?</Label>
           <CountryComboBox
-            label="Residence"
+            label="Origin Country"
             value={originCountry}
             setValue={setOriginCountry}
             countries={countries}
@@ -222,7 +206,7 @@ export const CompareDetailSection: React.FC<CompareDetailSectionProps> = ({
         <div className="col-span-2 space-y-3">
           <Label className="text-sm font-semibold">Where do you want to go?</Label>
           <CountryComboBox
-            label="Destination"
+            label="Destination Country"
             value={destinationCountry}
             setValue={setDestinationCountry}
             countries={countries}
@@ -230,38 +214,30 @@ export const CompareDetailSection: React.FC<CompareDetailSectionProps> = ({
           />
         </div>
       </div>
-
+      {/* Helper text when fields are empty */}
+      {!originCountry && !destinationCountry && (
+        <div className="text-center p-6 bg-muted/50 rounded-lg border-2 border-dashed border-muted-foreground/25">
+          <p className="text-sm text-muted-foreground">
+            Click a country on the map to choose where you are from, then click again to select where you want to go
+          </p>
+        </div>
+      )}
       {/* Comparison Results */}
       {comparison && (
-        <Card className="border-2">
-          <CardHeader className="pb-4">
+        <Card className=" dark:from-orange-950/20 dark:to-amber-950/20">
+          <CardHeader className="pb-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <CardTitle className="text-xl">Comparison Results</CardTitle>
-                <Badge 
-                  variant={comparison.isCheaper ? "default" : "destructive"}
-                  className="text-sm px-3 py-1"
-                >
-                  {comparison.isCheaper ? "Cheaper" : "More Expensive"}
-                </Badge>
-              </div>
-              <Button
-                onClick={resetSelection}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                <RotateCcwIcon className="h-4 w-4" />
-                Reset
-              </Button>
+              <CardTitle className={`text-2xl font-bold ${comparison.isCheaper ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                <span className="text-black">{comparison.destination.country} is </span>{comparison.isCheaper ? 'more affordable' : 'more expensive'} <span className="text-black">than {comparison.origin.country}</span>
+              </CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Overall Cost Summary */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 p-6 rounded-xl border">
-              <h4 className="font-semibold text-lg mb-3">Overall Cost of Living</h4>
+            <div className="bg-gradient-to-br from-white to-orange-50 dark:from-orange-900/30 dark:to-amber-900/30 p-6 rounded-xl border border-orange-200 dark:border-orange-800">
+              <h4 className="font-semibold text-lg mb-3 text-orange-900 dark:text-orange-100">Overall Cost of Living</h4>
               <div className="flex justify-between items-center mb-3">
-                <span className="text-lg font-medium">{comparison.destination.country}</span>
+                <span className="text-lg font-medium text-orange-800 dark:text-orange-200">{comparison.destination.country}</span>
                 <span
                   className={`text-2xl font-bold ${getComparisonColor(
                     comparison.differences.cost
@@ -270,7 +246,7 @@ export const CompareDetailSection: React.FC<CompareDetailSectionProps> = ({
                   {formatPercentage(comparison.differences.cost)}
                 </span>
               </div>
-              <p className="text-muted-foreground">
+              <p className="text-orange-700 dark:text-orange-300">
                 {comparison.isCheaper
                   ? `Living in ${comparison.destination.country} is ${Math.abs(comparison.differences.cost).toFixed(1)}% cheaper than ${comparison.origin.country}`
                   : `Living in ${comparison.destination.country} is ${Math.abs(comparison.differences.cost).toFixed(1)}% more expensive than ${comparison.origin.country}`}
@@ -279,9 +255,15 @@ export const CompareDetailSection: React.FC<CompareDetailSectionProps> = ({
 
             {/* Detailed Breakdown */}
             <div className="space-y-4">
-              <h4 className="font-semibold text-lg">Detailed Breakdown</h4>
+              <h4 className="font-semibold text-lg text-orange-900 dark:text-orange-100">Detailed Breakdown</h4>
               <div className="grid grid-cols-1 gap-4">
-                <div className="flex justify-between items-center p-4 bg-muted/50 rounded-lg border">
+                <div className={`flex justify-between items-center p-4 rounded-lg border ${
+                  comparison.differences.rent > 0 
+                    ? 'bg-gradient-to-br from-white to-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800' 
+                    : comparison.differences.rent < 0 
+                    ? 'bg-gradient-to-br from-white to-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800'
+                    : 'bg-gradient-to-br from-white to-orange-50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-800'
+                }`}>
                   <div>
                     <span className="font-semibold">🏠 Rent Prices</span>
                     <p className="text-sm text-muted-foreground">
@@ -296,7 +278,13 @@ export const CompareDetailSection: React.FC<CompareDetailSectionProps> = ({
                     {formatPercentage(comparison.differences.rent)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center p-4 bg-muted/50 rounded-lg border">
+                <div className={`flex justify-between items-center p-4 rounded-lg border ${
+                  comparison.differences.restaurant > 0 
+                    ? 'bg-gradient-to-br from-white to-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800' 
+                    : comparison.differences.restaurant < 0 
+                    ? 'bg-gradient-to-br from-white to-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800'
+                    : 'bg-gradient-to-br from-white to-orange-50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-800'
+                }`}>
                   <div>
                     <span className="font-semibold">🍽️ Restaurant Prices</span>
                     <p className="text-sm text-muted-foreground">
@@ -311,7 +299,13 @@ export const CompareDetailSection: React.FC<CompareDetailSectionProps> = ({
                     {formatPercentage(comparison.differences.restaurant)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center p-4 bg-muted/50 rounded-lg border">
+                <div className={`flex justify-between items-center p-4 rounded-lg border ${
+                  comparison.differences.groceries > 0 
+                    ? 'bg-gradient-to-br from-white to-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800' 
+                    : comparison.differences.groceries < 0 
+                    ? 'bg-gradient-to-br from-white to-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800'
+                    : 'bg-gradient-to-br from-white to-orange-50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-800'
+                }`}>
                   <div>
                     <span className="font-semibold">🛒 Groceries</span>
                     <p className="text-sm text-muted-foreground">
@@ -330,28 +324,28 @@ export const CompareDetailSection: React.FC<CompareDetailSectionProps> = ({
             </div>
 
             {/* Cost Indices */}
-            <div className="border-t pt-6">
-              <h4 className="font-semibold text-lg mb-4">Cost of Living Indices</h4>
+            <div className="border-t border-orange-200 dark:border-orange-800 pt-6">
+              <h4 className="font-semibold text-lg mb-4 text-orange-900 dark:text-orange-100">Cost of Living Indices</h4>
               <div className="grid grid-cols-2 gap-6">
-                <div className="text-center p-4 bg-muted/30 rounded-lg">
-                  <label className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                <div className="text-center p-4 bg-gradient-to-br from-white to-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                  <label className="text-sm font-medium text-orange-700 dark:text-orange-300 uppercase tracking-wide">
                     {comparison.origin.country}
                   </label>
-                  <p className="text-3xl font-mono font-bold mt-2">
+                  <p className="text-3xl font-mono font-bold mt-2 text-orange-900 dark:text-orange-100">
                     {comparison.origin.col_index}
                   </p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">
                     Based on {comparison.origin.city}
                   </p>
                 </div>
-                <div className="text-center p-4 bg-muted/30 rounded-lg">
-                  <label className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                <div className="text-center p-4 bg-gradient-to-br from-white to-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                  <label className="text-sm font-medium text-orange-700 dark:text-orange-300 uppercase tracking-wide">
                     {comparison.destination.country}
                   </label>
-                  <p className="text-3xl font-mono font-bold mt-2">
+                  <p className="text-3xl font-mono font-bold mt-2 text-orange-900 dark:text-orange-100">
                     {comparison.destination.col_index}
                   </p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">
                     Based on {comparison.destination.city}
                   </p>
                 </div>
@@ -359,19 +353,19 @@ export const CompareDetailSection: React.FC<CompareDetailSectionProps> = ({
               {comparison.origin.local_purchasing_power_index &&
                 comparison.destination.local_purchasing_power_index && (
                   <div className="mt-6 grid grid-cols-2 gap-6">
-                    <div className="text-center p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                      <span className="text-sm font-medium text-muted-foreground">
+                    <div className="text-center p-3 bg-gradient-to-br from-white to-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                      <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
                         Local Purchasing Power
                       </span>
-                      <p className="text-xl font-mono font-bold mt-1">
+                      <p className="text-xl font-mono font-bold mt-1 text-amber-900 dark:text-amber-100">
                         {comparison.origin.local_purchasing_power_index}
                       </p>
                     </div>
-                    <div className="text-center p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                      <span className="text-sm font-medium text-muted-foreground">
+                    <div className="text-center p-3 bg-gradient-to-br from-white to-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                      <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
                         Local Purchasing Power
                       </span>
-                      <p className="text-xl font-mono font-bold mt-1">
+                      <p className="text-xl font-mono font-bold mt-1 text-amber-900 dark:text-amber-100">
                         {comparison.destination.local_purchasing_power_index}
                       </p>
                     </div>

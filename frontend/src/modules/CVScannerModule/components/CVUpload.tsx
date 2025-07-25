@@ -155,7 +155,7 @@ export const CVUpload = () => {
     <div className="max-w-4xl mx-auto px-4 py-12">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-slate-800 mb-3">Submit Your CV</h2>
+          <h2 className="text-3xl font-bold text-slate-800 mb-3">Submit Your CV and Get Recommendations</h2>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">
             We&apos;ll analyze your CV and recommend the best universities and majors tailored to your skills and experience.
           </p>
