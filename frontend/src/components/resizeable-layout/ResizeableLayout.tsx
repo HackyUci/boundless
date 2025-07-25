@@ -10,6 +10,9 @@ import { FEATURE_BUTTONS, type FeatureButtonId } from "./constant";
 import MapComponent from "../Map";
 import CountryDetailsModule from "@/modules/CompareDetailsModukle";
 import { AIChatbotModule } from "@/modules/AIChatbotModule";
+import Image from "next/image";
+import { cn } from "@/lib/utils";
+
 
 interface City {
   city: string;
@@ -60,23 +63,36 @@ export default function ResizableLayout() {
               <div className="flex-1 px-8 translate-x-6 pt-4 top-0 mx-2 relative">
                 {renderFeatureContent()}
               </div>
-              <div className="flex justify-start rotate-90 -translate-x-1/2 ml-6 gap-1 absolute top-1/4">
-                {FEATURE_BUTTONS.map((button) => (
-                  <div
-                    key={button.id}
-                    onClick={() => handleButtonClick(button.id)}
-                    className={`px-3 py-2 text-sm cursor-pointer transition-colors duration-200 rounded-md ${
-                      activeFeature === button.id
-                        ? "bg-[#FFF3E6] text-muted-foreground border-gray-400 border-1 shadow-[4px_0_0_rgba(0,0,0,0.1)]"
-                        : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {button.label}
-                  </div>
-                ))}
+                    <div className="flex justify-start rotate-90 -translate-x-1/2 ml-6 gap-1 absolute top-1/4">
+                  {FEATURE_BUTTONS.map((button) => (
+                    <div
+                      key={button.id}
+                      onClick={() => handleButtonClick(button.id)}
+                      className={cn(
+                        "flex items-center justify-center px-3 py-2 text-sm cursor-pointer transition-colors duration-200 rounded-md",
+                        {
+                          "bg-[#FFF3E6] text-muted-foreground border-gray-400 border-1 shadow-[4px_0_0_rgba(0,0,0,0.1)]": activeFeature === button.id,
+                          "hover:bg-muted text-muted-foreground hover:text-foreground": activeFeature !== button.id,
+                        }
+                      )}
+                    >
+                      {button.iconUrl ? (
+                        <Image
+                          src={button.iconUrl}
+                          alt={`${button.label} icon`}
+                          width={20}
+                          height={20}
+                          className="h-5 w-5"
+                        />
+                      ) : (
+                        null
+                      )}
+                      <span className="ml-1">{button.label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
