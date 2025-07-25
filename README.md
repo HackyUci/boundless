@@ -6,23 +6,30 @@
 
 <p align="justify"><strong>Boundless</strong> is a web-based platform designed to help individuals pursue their dreams of studying or working abroad. It combines AI-powered CV analysis, an interactive world map with lifestyle compatibility insights, a smart chatbot for personalized guidance, a curated scholarship hub, and milestone tracking, all in one place. <strong>Boundless</strong> acts as your education agent, career planner, and life navigator, making the journey to go abroad clearer, smarter, and more achievable.</p>
 
-##  Key Points 
+## 🕹️ Key Points 
 - Global Education Inequality
 - Lack of Personalized Guidance
 - Information Overload, No Direction
 - Financial Uncertainty Limits Decision-Making
 
-## GitHub Repository 🖇️
-[This page!](https://github.com/gracekarinn/ICPSeeker)
+## 🖇️ GitHub Repository
+[This page!](https://github.com/HackyUci/boundless)
 
-## About us 🎥
-[Our demo video]()
+## 📽️ About Boundless
+[See how it works]()
 
-## Features 
-
-
-
-
+## ✨ Features
+1. **CV Scanner** – Instantly analyzes your skills, experience, and academic background to match you with ideal programs, universities, and scholarships.
+![CV Scanner](./frontend/public/SCHOLARSHIP_MATCHER.jpg)
+![CV Scanner](./frontend/public/DREAMTRACKER.jpg)
+2. **Bonbon AI** – Your personalized AI assistant that helps you prepare for studying abroad based on your background, budget, dream universities, and scholarship goals.
+![Bonbon AI](./frontend/public/BONBON_AI.jpg)
+3. **Country Comparison** – Compare your current country with your target destination to understand differences in cost, requirements, and opportunities.
+![Country Comparison](/images/compare.png)
+4. **Preparation Roadmap** – A timeline tracker that guides you through every phase—from preparation and applications to tuition payments and enrollment.
+![Country Comparison](/images/tracker.png)
+5. **Scholarship Finder** – Curated list of scholarships you can apply for, complete with detailed info and direct links.
+![CV Scanner](./frontend/public/SCHOLARSHIP_HUB.jpg)
 
 ## 🧠 Tech Stack Overview
 
