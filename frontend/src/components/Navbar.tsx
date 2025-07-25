@@ -6,9 +6,12 @@ import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
+import { usePathname } from "next/navigation"
+
 
 export function Navbar({ className, ...props }: React.HTMLAttributes<HTMLElement>) {
   const { isLoggedIn, isLoading, logout, user } = useAuth()
+  const pathname = usePathname()
 
   const navLinks = [
     ({ href: "/", label: "Home", loggedIn: false }),
@@ -16,6 +19,10 @@ export function Navbar({ className, ...props }: React.HTMLAttributes<HTMLElement
     { href: "/timeline", label: "Preparation Roadmap", loggedIn: true },
     { href: "/scholarships", label: "Scholarships", loggedIn: true },
   ]
+
+  if (pathname === "/login" || pathname === "/register") {
+    return null
+  }
 
   return (
     <header
